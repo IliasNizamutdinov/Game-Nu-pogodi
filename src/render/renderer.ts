@@ -4,14 +4,14 @@ import {
   CONTROLS,
   EGG_RADIUS,
   GROUND_Y,
-  HARE_WINDOW,
   HOUSE,
-  HUD,
   LANES,
+  LCD,
   LOGICAL_H,
   LOGICAL_W,
   angleOnPath,
   catchPoint,
+  isLaneControl,
   pointOnPath,
   type ControlId,
 } from '../game/geometry';
@@ -29,19 +29,9 @@ export interface UiState {
   blinkOn: boolean;
 }
 
-const LANE_COLOR: Record<LaneId, string> = {
-  ul: '#e23b3b',
-  ur: '#2d6fe8',
-  ll: '#2f9d4a',
-  lr: '#e6a317',
-};
-
-const LANE_HINT: Record<LaneId, { name: string; key: string; arrow: string }> = {
-  ul: { name: 'UL', key: 'Q', arrow: '↖' },
-  ur: { name: 'UR', key: 'W', arrow: '↗' },
-  ll: { name: 'LL', key: 'A', arrow: '↙' },
-  lr: { name: 'LR', key: 'S', arrow: '↘' },
-};
+const INK = '#1b2b22';
+const LCD_BG = '#c5ccbc';
+const RED = '#e10600';
 
 const SEGMENTS: ReadonlyArray<readonly [number, number, number, number, number, number, number]> = [
   [1, 1, 1, 1, 1, 1, 0],
@@ -76,8 +66,8 @@ function roundRect(
 
 function traceLane(ctx: CanvasRenderingContext2D, lane: LaneId): void {
   ctx.beginPath();
-  for (let i = 0; i <= 28; i += 1) {
-    const point = pointOnPath(lane, i / 28);
+  for (let i = 0; i <= 24; i += 1) {
+    const point = pointOnPath(lane, i / 24);
     if (i === 0) ctx.moveTo(point.x, point.y);
     else ctx.lineTo(point.x, point.y);
   }
@@ -90,12 +80,12 @@ function closedLane(session: Session): LaneId | null {
 
 export function render(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
   ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
-  drawSky(ctx);
-  drawGround(ctx);
-  drawHouse(ctx, session);
+  drawShell(ctx);
+  drawLcd(ctx, session, ui);
   const closed = closedLane(session);
   for (const lane of LANES) drawChute(ctx, lane, lane === closed);
   for (const lane of LANES) drawChicken(ctx, lane, session, lane === closed);
+  drawHouse(ctx, session);
   for (const egg of session.eggs) {
     if (egg.state === 'moving') drawMovingEgg(ctx, egg);
   }
@@ -110,167 +100,147 @@ export function render(ctx: CanvasRenderingContext2D, session: Session, ui: UiSt
   drawOverlay(ctx, session, ui);
 }
 
-function drawSky(ctx: CanvasRenderingContext2D): void {
-  const sky = ctx.createLinearGradient(0, 0, 0, 520);
-  sky.addColorStop(0, '#f6c98a');
-  sky.addColorStop(0.45, '#f08a4b');
-  sky.addColorStop(1, '#d65a3a');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, LOGICAL_W, 520);
+function drawShell(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = '#178a34';
+  ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+  ctx.strokeStyle = '#0c4e1e';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(2, 2, LOGICAL_W - 4, LOGICAL_H - 4);
 
-  ctx.fillStyle = '#ffe3a4';
-  ctx.beginPath();
-  ctx.arc(300, 92, 28, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255, 236, 190, 0.35)';
-  ctx.beginPath();
-  ctx.arc(300, 92, 40, 0, Math.PI * 2);
+  const metal = ctx.createLinearGradient(8, 8, 8, LOGICAL_H - 8);
+  metal.addColorStop(0, '#f2f4f6');
+  metal.addColorStop(0.45, '#d5dbe1');
+  metal.addColorStop(1, '#b7c0c8');
+  roundRect(ctx, 8, 8, LOGICAL_W - 16, LOGICAL_H - 16, 8);
+  ctx.fillStyle = metal;
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(255, 244, 220, 0.55)';
-  drawCloud(ctx, 40, 78, 1);
-  drawCloud(ctx, 150, 64, 0.75);
-
-  ctx.fillStyle = '#6d8a45';
-  ctx.beginPath();
-  ctx.ellipse(70, 470, 120, 46, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#567336';
-  ctx.beginPath();
-  ctx.ellipse(250, 486, 150, 42, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#3f5a2c';
-  ctx.beginPath();
-  ctx.ellipse(180, 508, 220, 36, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
-  ctx.beginPath();
-  ctx.ellipse(x, y, 26 * scale, 12 * scale, 0, 0, Math.PI * 2);
-  ctx.ellipse(x + 18 * scale, y + 2, 18 * scale, 10 * scale, 0, 0, Math.PI * 2);
-  ctx.ellipse(x - 16 * scale, y + 3, 16 * scale, 9 * scale, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawGround(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = '#c4925a';
-  ctx.fillRect(0, 492, LOGICAL_W, 36);
-  ctx.fillStyle = '#a87442';
-  ctx.fillRect(0, 520, LOGICAL_W, 8);
-  ctx.strokeStyle = 'rgba(90, 52, 28, 0.25)';
+  ctx.save();
+  roundRect(ctx, 8, 8, LOGICAL_W - 16, LOGICAL_H - 16, 8);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
   ctx.lineWidth = 2;
-  for (let x = 12; x < LOGICAL_W; x += 22) {
+  for (let y = 16; y < LOGICAL_H; y += 7) {
     ctx.beginPath();
-    ctx.moveTo(x, 500);
-    ctx.lineTo(x + 8, 512);
+    ctx.moveTo(10, y);
+    ctx.lineTo(LOGICAL_W - 10, y);
     ctx.stroke();
   }
-}
+  ctx.restore();
 
-function drawHouse(ctx: CanvasRenderingContext2D, session: Session): void {
-  const { x, y, w, h } = HOUSE;
-  ctx.fillStyle = '#6b442c';
-  roundRect(ctx, x, y + 18, w, h - 18, 4);
+  for (const screw of [
+    [22, 22],
+    [LOGICAL_W - 22, 22],
+    [22, LOGICAL_H - 22],
+    [LOGICAL_W - 22, LOGICAL_H - 22],
+  ]) {
+    const sx = screw[0] ?? 0;
+    const sy = screw[1] ?? 0;
+    ctx.fillStyle = '#8d969e';
+    ctx.beginPath();
+    ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#5c656c';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx - 3, sy);
+    ctx.lineTo(sx + 3, sy);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#f7f8f8';
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(48, 46, 22, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#2c1a12';
+  ctx.stroke();
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 16px Verdana, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ИМ', 48, 47);
+  ctx.textBaseline = 'alphabetic';
+
+  roundRect(ctx, 96, 16, 412, 304, 6);
+  ctx.fillStyle = '#f4f7f8';
+  ctx.fill();
+  ctx.strokeStyle = '#9aa3aa';
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.fillStyle = '#8d3d32';
-  ctx.beginPath();
-  ctx.moveTo(x - 4, y + 24);
-  ctx.lineTo(x + w / 2, y);
-  ctx.lineTo(x + w + 4, y + 24);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#2a211c';
-  roundRect(ctx, HARE_WINDOW.x, HARE_WINDOW.y, HARE_WINDOW.w, HARE_WINDOW.h, 3);
-  ctx.fill();
-  ctx.strokeStyle = '#e6c48a';
-  ctx.stroke();
-
-  ctx.fillStyle = '#5c331f';
-  roundRect(ctx, x + 8, y + h - 28, 18, 26, 2);
+  roundRect(ctx, 102, 40, 400, 258, 3);
+  ctx.fillStyle = '#146b32';
   ctx.fill();
 
-  if (session.hare.present) drawHare(ctx);
-  else {
-    ctx.fillStyle = 'rgba(20, 16, 14, 0.45)';
-    ctx.fillRect(HARE_WINDOW.x + 4, HARE_WINDOW.y + 4, 10, HARE_WINDOW.h - 8);
-  }
+  ctx.fillStyle = RED;
+  ctx.font = 'bold 13px Verdana, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('WOLF CATCHES EGGS', 302, 32);
+
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 16px Verdana, sans-serif';
+  ctx.fillText('WIDE SCREEN', 302, 342);
 }
 
-function drawHare(ctx: CanvasRenderingContext2D): void {
-  const cx = HARE_WINDOW.x + HARE_WINDOW.w / 2;
-  const cy = HARE_WINDOW.y + HARE_WINDOW.h / 2 + 4;
-  ctx.fillStyle = '#f3efe6';
-  ctx.strokeStyle = '#2c241c';
-  ctx.lineWidth = 1.6;
+function drawLcd(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
+  ctx.fillStyle = LCD_BG;
+  ctx.fillRect(LCD.x, LCD.y, LCD.w, LCD.h);
+  ctx.save();
   ctx.beginPath();
-  ctx.ellipse(cx - 7, cy - 16, 3.2, 10, -0.2, 0, Math.PI * 2);
-  ctx.ellipse(cx + 7, cy - 16, 3.2, 10, 0.2, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.rect(LCD.x, LCD.y, LCD.w, LCD.h);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(80, 100, 70, 0.08)';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(LCD.x + 20, LCD.y + LCD.h);
+  ctx.quadraticCurveTo(LCD.x + 180, LCD.y + 80, LCD.x + LCD.w, LCD.y + 40);
   ctx.stroke();
-  ctx.fillStyle = '#f7b6c4';
-  ctx.beginPath();
-  ctx.ellipse(cx - 7, cy - 16, 1.4, 6, -0.2, 0, Math.PI * 2);
-  ctx.ellipse(cx + 7, cy - 16, 1.4, 6, 0.2, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = '#6f8f5a';
+  for (let i = 0; i < 8; i += 1) {
+    const x = LCD.x + 16 + i * 48;
+    ctx.fillRect(x, GROUND_Y + 2, 3, 10);
+    ctx.beginPath();
+    ctx.moveTo(x - 6, GROUND_Y + 6);
+    ctx.lineTo(x + 2, GROUND_Y - 2);
+    ctx.lineTo(x + 10, GROUND_Y + 6);
+    ctx.fill();
+  }
+  ctx.restore();
 
-  ctx.fillStyle = '#f7f3ea';
-  ctx.beginPath();
-  ctx.arc(cx, cy + 2, 11, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#2c241c';
-  ctx.beginPath();
-  ctx.arc(cx - 4, cy + 1, 1.3, 0, Math.PI * 2);
-  ctx.arc(cx + 4, cy + 1, 1.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#e07a8c';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 6, 2.2, 1.4, 0, 0, Math.PI * 2);
-  ctx.fill();
+  const label = session.status === 'menu' ? 'GAME A' : `GAME ${session.mode}`;
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 11px Verdana, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(label, LCD.x + 8, LCD.y + LCD.h - 8);
+  if (ui.showRecord) {
+    ctx.textAlign = 'right';
+    ctx.fillText(`BEST ${session.highScore.toString().padStart(3, '0')}`, LCD.x + LCD.w - 8, LCD.y + LCD.h - 8);
+  }
 }
 
 function drawChute(ctx: CanvasRenderingContext2D, lane: LaneId, closed: boolean): void {
   ctx.save();
-  ctx.globalAlpha = closed ? 0.38 : 1;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  ctx.globalAlpha = closed ? 0.35 : 1;
   traceLane(ctx, lane);
-  ctx.strokeStyle = '#4a3424';
-  ctx.lineWidth = 20;
+  ctx.strokeStyle = '#6d5840';
+  ctx.lineWidth = 7;
   ctx.stroke();
   traceLane(ctx, lane);
-  ctx.strokeStyle = LANE_COLOR[lane];
-  ctx.lineWidth = 14;
-  ctx.stroke();
-  traceLane(ctx, lane);
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.strokeStyle = closed ? '#8d8d78' : '#d7d2c4';
   ctx.lineWidth = 4;
   ctx.stroke();
-
-  for (let i = 1; i <= 4; i += 1) {
-    const point = pointOnPath(lane, i / 5);
-    ctx.fillStyle = '#f2e2c4';
-    ctx.beginPath();
-    ctx.arc(point.x, point.y - 6, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   if (closed) {
     const mid = pointOnPath(lane, 0.55);
-    ctx.strokeStyle = '#2a211c';
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(mid.x - 10, mid.y - 10);
-    ctx.lineTo(mid.x + 10, mid.y + 10);
-    ctx.moveTo(mid.x + 10, mid.y - 10);
-    ctx.lineTo(mid.x - 10, mid.y + 10);
+    ctx.moveTo(mid.x - 6, mid.y - 6);
+    ctx.lineTo(mid.x + 6, mid.y + 6);
+    ctx.moveTo(mid.x + 6, mid.y - 6);
+    ctx.lineTo(mid.x - 6, mid.y + 6);
     ctx.stroke();
   }
   ctx.restore();
@@ -279,69 +249,81 @@ function drawChute(ctx: CanvasRenderingContext2D, lane: LaneId, closed: boolean)
 function drawChicken(ctx: CanvasRenderingContext2D, lane: LaneId, session: Session, dimmed: boolean): void {
   const anchor = CHICKENS[lane];
   const facing = lane === 'ul' || lane === 'll' ? 1 : -1;
-  const bob = Math.sin(session.time * 3.2 + anchor.x) * 1.6;
-  const squish = session.layPulse[lane] > 0 ? session.layPulse[lane] / ANIM.lay : 0;
+  const bob = Math.sin(session.time * 3 + anchor.x) * 1;
   ctx.save();
-  ctx.globalAlpha = dimmed ? 0.45 : 1;
+  ctx.globalAlpha = dimmed ? 0.4 : 1;
   ctx.translate(anchor.x, anchor.y + bob);
   ctx.scale(facing, 1);
-
   ctx.strokeStyle = '#6b4a2a';
-  ctx.lineWidth = 4;
-  ctx.lineCap = 'round';
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(-24, 6);
-  ctx.lineTo(22, 6);
+  ctx.moveTo(-16, 4);
+  ctx.lineTo(16, 4);
   ctx.stroke();
-
-  ctx.fillStyle = '#f4efe4';
-  ctx.strokeStyle = '#2c241c';
-  ctx.lineWidth = 1.8;
+  ctx.fillStyle = '#f4f1ea';
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.ellipse(0, -8, 16, 11 - squish * 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -6, 11, 8, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-
-  ctx.fillStyle = LANE_COLOR[lane];
   ctx.beginPath();
-  ctx.ellipse(-2, -6, 7, 5, -0.4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#f7f3ea';
-  ctx.beginPath();
-  ctx.arc(12, -16, 7, 0, Math.PI * 2);
+  ctx.arc(9, -12, 5, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-
-  ctx.fillStyle = '#d23a32';
+  ctx.fillStyle = '#d02323';
   ctx.beginPath();
-  ctx.ellipse(12, -23, 3, 4, 0, 0, Math.PI * 2);
-  ctx.ellipse(15, -21, 2, 3, 0.4, 0, Math.PI * 2);
+  ctx.ellipse(9, -17, 2.2, 3, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.fillStyle = '#f0b429';
+  ctx.fillStyle = '#e0a020';
   ctx.beginPath();
-  ctx.moveTo(18, -16);
-  ctx.lineTo(26, -14);
-  ctx.lineTo(18, -12);
+  ctx.moveTo(13, -12);
+  ctx.lineTo(19, -10);
+  ctx.lineTo(13, -8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(10, -13, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHouse(ctx: CanvasRenderingContext2D, session: Session): void {
+  const { x, y, w, h } = HOUSE;
+  ctx.fillStyle = '#f3f0e8';
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.4;
+  ctx.fillRect(x + 8, y + 16, w - 10, h - 16);
+  ctx.strokeRect(x + 8, y + 16, w - 10, h - 16);
+  ctx.fillStyle = '#d23a2a';
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + 18);
+  ctx.lineTo(x + w / 2, y + 2);
+  ctx.lineTo(x + w - 2, y + 18);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-
-  ctx.fillStyle = '#2c241c';
+  ctx.fillStyle = '#6a3a28';
+  ctx.fillRect(x + 16, y + h - 16, 10, 16);
+  if (!session.hare.present) return;
+  const hx = x + w - 4;
+  const hy = y + 20;
+  ctx.fillStyle = '#f7f4ee';
   ctx.beginPath();
-  ctx.arc(14, -17, 1.2, 0, Math.PI * 2);
+  ctx.ellipse(hx - 6, hy - 14, 2.4, 8, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(hx + 2, hy - 14, 2.4, 8, 0.2, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.strokeStyle = '#2c241c';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(-4, 2);
-  ctx.lineTo(-6, 8);
-  ctx.moveTo(4, 2);
-  ctx.lineTo(6, 8);
   ctx.stroke();
-  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(hx, hy, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(hx - 2, hy - 1, 0.8, 0, Math.PI * 2);
+  ctx.arc(hx + 3, hy - 1, 0.8, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawEggShape(
@@ -357,42 +339,26 @@ function drawEggShape(
   ctx.rotate(rotation);
   ctx.scale(scale, scale);
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = 'rgba(80, 40, 20, 0.2)';
+  ctx.fillStyle = '#fffaf0';
+  ctx.strokeStyle = '#8a7048';
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.ellipse(2, 4, EGG_RADIUS * 0.85, EGG_RADIUS * 1.05, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#fff6dc';
-  ctx.strokeStyle = '#8a6230';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, EGG_RADIUS * 0.78, EGG_RADIUS, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, EGG_RADIUS * 0.85, EGG_RADIUS * 1.15, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.beginPath();
-  ctx.ellipse(-4, -6, 4, 6, -0.4, 0, Math.PI * 2);
-  ctx.fill();
   ctx.restore();
 }
 
 function drawMovingEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
-  const angle = angleOnPath(egg.lane, egg.progress);
-  for (const trail of [0.055, 0.028]) {
-    const t = egg.progress - trail;
-    if (t <= 0) continue;
-    const point = pointOnPath(egg.lane, t);
-    drawEggShape(ctx, point.x, point.y, angle, 0.86, 0.18);
-  }
   const point = pointOnPath(egg.lane, egg.progress);
-  const roll = angle + egg.progress * 7;
+  const roll = angleOnPath(egg.lane, egg.progress) + egg.progress * 6;
   drawEggShape(ctx, point.x, point.y, roll, 1, 1);
 }
 
 function drawCaughtEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   const t = Math.min(1, egg.animTime / ANIM.catch);
   const point = catchPoint(egg.lane);
-  drawEggShape(ctx, point.x, point.y - t * 12, 0, 1 - t * 0.85, 1 - t * 0.2);
+  drawEggShape(ctx, point.x, point.y - t * 8, 0, 1 - t * 0.8, 1 - t * 0.2);
 }
 
 function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
@@ -403,208 +369,99 @@ function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   if (t < fall) {
     const k = t / fall;
     const y = start.y + (GROUND_Y - start.y) * k * k;
-    drawEggShape(ctx, start.x, y, k * 2, 1, 1);
+    drawEggShape(ctx, start.x, y, k, 1, 1);
     return;
   }
   const phase = (t - fall) / (1 - fall);
-  drawSplat(ctx, start.x, GROUND_Y, phase);
-  if (egg.hareWasPresent) drawRunningChick(ctx, start.x, GROUND_Y, phase);
-}
-
-function drawSplat(ctx: CanvasRenderingContext2D, x: number, y: number, phase: number): void {
   ctx.save();
-  ctx.globalAlpha = 1 - phase * 0.35;
-  ctx.fillStyle = '#f4e7b0';
+  ctx.globalAlpha = 1 - phase * 0.4;
+  ctx.fillStyle = '#f2e2a8';
   ctx.beginPath();
-  ctx.ellipse(x, y, 14 + phase * 4, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(start.x, GROUND_Y, 8, 3, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#f0c14a';
+  ctx.fillStyle = '#e2b13a';
   ctx.beginPath();
-  ctx.arc(x, y - 2, 5, 0, Math.PI * 2);
+  ctx.arc(start.x, GROUND_Y - 1, 3, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#fff8e8';
-  ctx.strokeStyle = '#8a6230';
-  ctx.lineWidth = 1.4;
-  for (const shard of [
-    [-10, -6, 7, 4],
-    [8, -8, 6, 4],
-    [-4, -12, 5, 3],
-  ]) {
-    const sx = shard[0] ?? 0;
-    const sy = shard[1] ?? 0;
-    const sw = shard[2] ?? 4;
-    const sh = shard[3] ?? 3;
+  ctx.restore();
+  if (egg.hareWasPresent) {
+    const cx = start.x + 8 + phase * 28;
+    ctx.fillStyle = '#f0c84a';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(x + sx, y + sy, sw, sh, 0.4, 0, Math.PI * 2);
+    ctx.ellipse(cx, GROUND_Y - 6, 5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + 4, GROUND_Y - 9, 2.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
-  ctx.restore();
-}
-
-function drawRunningChick(ctx: CanvasRenderingContext2D, x: number, y: number, phase: number): void {
-  const cx = x + 10 + phase * 48;
-  const cy = y - 10 - Math.abs(Math.sin(phase * 18)) * 3;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.fillStyle = '#f6d34a';
-  ctx.strokeStyle = '#2c241c';
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 7, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(6, -4, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#e4572e';
-  ctx.beginPath();
-  ctx.moveTo(9, -4);
-  ctx.lineTo(14, -3);
-  ctx.lineTo(9, -2);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#2c241c';
-  ctx.beginPath();
-  ctx.arc(7, -5, 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#2c241c';
-  ctx.beginPath();
-  ctx.moveTo(-2, 5);
-  ctx.lineTo(-4, 9);
-  ctx.moveTo(2, 5);
-  ctx.lineTo(4, 9);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawWolf(ctx: CanvasRenderingContext2D, session: Session): void {
   const facing = session.wolfLane === 'ul' || session.wolfLane === 'll' ? -1 : 1;
   const { x, y } = session.wolfVisual;
-  const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 6;
+  const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 3;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(facing, 1);
-
-  ctx.fillStyle = 'rgba(60, 30, 16, 0.25)';
+  ctx.fillStyle = '#2c2c2c';
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.ellipse(0, 8, 22, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#6e6a74';
-  ctx.strokeStyle = '#241c18';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(-6, -34, 16, 20, 0, 0, Math.PI * 2);
+  ctx.ellipse(-2, -16, 10, 12, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-
-  ctx.fillStyle = '#d9cfc2';
+  ctx.fillStyle = '#3a3a3a';
   ctx.beginPath();
-  ctx.ellipse(-4, -30, 8, 12, 0, 0, Math.PI * 2);
+  ctx.moveTo(-12, -10);
+  ctx.quadraticCurveTo(-22, -2, -16, 6);
+  ctx.quadraticCurveTo(-8, -2, -6, -8);
   ctx.fill();
-
-  ctx.fillStyle = '#c4552a';
   ctx.beginPath();
-  ctx.moveTo(-18, -40);
-  ctx.lineTo(-2, -30);
-  ctx.lineTo(-16, -24);
-  ctx.closePath();
+  ctx.arc(0, -28, 8, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-
-  ctx.fillStyle = '#7a767f';
   ctx.beginPath();
-  ctx.moveTo(-18, -28);
-  ctx.quadraticCurveTo(-34, -18, -26, -4);
-  ctx.quadraticCurveTo(-16, -12, -12, -22);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#7d7982';
-  ctx.beginPath();
-  ctx.arc(-8, -56, 12, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#6e6a74';
-  ctx.beginPath();
-  ctx.moveTo(-16, -64);
-  ctx.lineTo(-20, -80);
-  ctx.lineTo(-8, -66);
+  ctx.moveTo(-6, -34);
+  ctx.lineTo(-9, -44);
+  ctx.lineTo(-1, -34);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(-4, -66);
-  ctx.lineTo(2, -82);
-  ctx.lineTo(4, -64);
+  ctx.moveTo(2, -34);
+  ctx.lineTo(6, -45);
+  ctx.lineTo(7, -33);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-
-  ctx.fillStyle = '#efe8dc';
+  ctx.fillStyle = '#f4f4f4';
   ctx.beginPath();
-  ctx.ellipse(2, -54, 8, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(5, -27, 5, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#2c241c';
+  ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.arc(6, -52, 1.6, 0, Math.PI * 2);
+  ctx.arc(7, -27, 1, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#c4574a';
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.arc(8, -48, 1.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#241c18';
-  ctx.fillStyle = '#6e6a74';
-  ctx.lineWidth = 5;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-2, -24);
-  ctx.quadraticCurveTo(16, -28 - bump, 20, -6 - bump);
+  ctx.moveTo(2, -8);
+  ctx.quadraticCurveTo(12, -16 - bump, 14, -2 - bump);
   ctx.stroke();
-
-  ctx.save();
-  ctx.translate(18, -2 - bump);
-  ctx.fillStyle = '#d8612a';
-  ctx.strokeStyle = '#241c18';
-  ctx.lineWidth = 2;
-  roundRect(ctx, -16, -6, 32, 16, 5);
+  ctx.fillStyle = '#e07a2f';
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1.2;
+  roundRect(ctx, 6, -6 - bump, 16, 9, 2);
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = '#f2c7a2';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(0, -6, 12, Math.PI, 0);
-  ctx.stroke();
-  ctx.fillStyle = '#fff6dc';
-  if (session.displayScore > 0) {
-    ctx.beginPath();
-    ctx.ellipse(-4, 2, 5, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-
-  ctx.fillStyle = '#5e5a64';
-  ctx.strokeStyle = '#241c18';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(-12, -16);
-  ctx.lineTo(-16, 4);
-  ctx.lineTo(-8, 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(0, -16);
-  ctx.lineTo(2, 4);
-  ctx.lineTo(10, 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  ctx.fillStyle = '#1d1d1d';
+  ctx.fillRect(-8, -4, 4, 12);
+  ctx.fillRect(2, -4, 4, 12);
   ctx.restore();
 }
 
@@ -613,71 +470,25 @@ function drawCatchFloater(ctx: CanvasRenderingContext2D, session: Session): void
   const alpha = Math.max(0, session.catchPulse / ANIM.catchPulse);
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#fff8e4';
-  ctx.strokeStyle = '#6a3a16';
-  ctx.lineWidth = 3;
-  ctx.font = 'bold 18px Verdana, sans-serif';
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 12px Verdana, sans-serif';
   ctx.textAlign = 'center';
-  ctx.strokeText('+1', session.wolfVisual.x, session.wolfVisual.y - 70 - (1 - alpha) * 14);
-  ctx.fillText('+1', session.wolfVisual.x, session.wolfVisual.y - 70 - (1 - alpha) * 14);
+  ctx.fillText('+1', session.wolfVisual.x, session.wolfVisual.y - 48);
   ctx.restore();
 }
 
 function drawHud(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
-  ctx.fillStyle = '#2a1a12';
-  roundRect(ctx, HUD.x, HUD.y, HUD.w, HUD.h, 8);
-  ctx.fill();
-  ctx.strokeStyle = '#e6c48a';
-  ctx.lineWidth = ui.showRecord ? 3 : 1.5;
-  ctx.stroke();
-
-  ctx.fillStyle = '#e6c48a';
-  ctx.font = 'bold 9px Verdana, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('SCORE', 16, 22);
-  ctx.fillText('BEST', 262, 22);
-  drawDigits(ctx, session.displayScore, 16, 26, '#d6ff6a', '#243022');
-
-  ctx.save();
-  if (ui.showRecord) {
-    ctx.strokeStyle = '#ffe08a';
-    ctx.lineWidth = 2;
-    roundRect(ctx, 258, 24, 62, 30, 4);
-    ctx.stroke();
-  }
-  drawDigits(ctx, session.highScore, 262, 26, ui.showRecord ? '#ffe08a' : '#d6ff6a', '#243022');
-  ctx.restore();
-
+  drawDigits(ctx, session.displayScore, 248, 56, ui.showRecord ? '#8a1a12' : INK);
   const slots = penaltySlots(session.penaltyHalves);
   slots.forEach((slot, index) => {
-    drawPenaltySlot(ctx, 132 + index * 28, 18, slot, ui.blinkOn);
+    drawPenaltySlot(ctx, 360 + index * 18, 54, slot, ui.blinkOn);
   });
-
-  if (session.status !== 'menu') {
-    ctx.fillStyle = '#1a120e';
-    roundRect(ctx, 214, 16, 22, 16, 4);
-    ctx.fill();
-    ctx.fillStyle = '#fff4d2';
-    ctx.font = 'bold 11px Verdana, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(session.mode, 225, 28);
-  }
 }
 
-function drawDigits(
-  ctx: CanvasRenderingContext2D,
-  value: number,
-  x: number,
-  y: number,
-  on: string,
-  off: string,
-): void {
-  const text = Math.max(0, Math.min(999, Math.floor(value))).toString().padStart(3, '0');
-  ctx.fillStyle = '#101810';
-  ctx.fillRect(x - 2, y - 1, 50, 28);
-  for (let i = 0; i < 3; i += 1) {
-    const char = text[i] ?? '0';
-    drawDigit(ctx, Number(char), x + i * 16, y, 14, 26, on, off);
+function drawDigits(ctx: CanvasRenderingContext2D, value: number, x: number, y: number, color: string): void {
+  const text = Math.max(0, Math.min(999, Math.floor(value))).toString().padStart(4, '0');
+  for (let i = 0; i < 4; i += 1) {
+    drawDigit(ctx, Number(text[i] ?? '0'), x + i * 14, y, 12, 22, color, 'rgba(27,43,34,0.12)');
   }
 }
 
@@ -692,7 +503,7 @@ function drawDigit(
   off: string,
 ): void {
   const mask = SEGMENTS[digit] ?? SEGMENTS[0];
-  const thickness = Math.max(2, Math.round(w * 0.22));
+  const thickness = 2;
   const gap = 1;
   const innerW = w - thickness * 2;
   const half = (h - thickness * 3 - gap * 2) / 2;
@@ -707,7 +518,7 @@ function drawDigit(
   ];
   bars.forEach((bar, index) => {
     ctx.fillStyle = mask?.[index] ? on : off;
-    ctx.fillRect(bar[0], bar[1], bar[2], bar[3]);
+    ctx.fillRect(bar[0], bar[1], Math.max(1, bar[2]), Math.max(1, bar[3]));
   });
 }
 
@@ -718,206 +529,137 @@ function drawPenaltySlot(
   slot: 'empty' | 'solid' | 'blink',
   blinkOn: boolean,
 ): void {
-  ctx.save();
-  ctx.fillStyle = '#1a120e';
-  roundRect(ctx, x, y, 24, 28, 4);
+  const show = slot === 'solid' || (slot === 'blink' && blinkOn);
+  ctx.fillStyle = show ? '#e2b423' : 'rgba(27,43,34,0.15)';
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(x + 6, y + 10, 5, 4, 0, 0, Math.PI * 2);
   ctx.fill();
-  const showChick = slot === 'solid' || (slot === 'blink' && blinkOn);
-  if (slot === 'empty' || (slot === 'blink' && !blinkOn)) {
-    ctx.fillStyle = '#3a2a22';
-    ctx.beginPath();
-    ctx.ellipse(x + 12, y + 16, 5, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#8a7058';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-  }
-  if (showChick) {
-    ctx.fillStyle = slot === 'blink' ? '#ffe27a' : '#f0c84a';
-    ctx.strokeStyle = '#2c241c';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(x + 12, y + 16, 6, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x + 16, y + 12, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.restore();
+  if (show) ctx.stroke();
+  if (!show) return;
+  ctx.beginPath();
+  ctx.arc(x + 9, y + 6, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 }
 
 function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
-  ctx.fillStyle = '#3a2418';
-  ctx.fillRect(0, 522, LOGICAL_W, LOGICAL_H - 522);
-  ctx.fillStyle = '#2a1a12';
-  ctx.fillRect(0, 522, LOGICAL_W, 6);
-
-  drawSystemButton(ctx, 'pause', session.status === 'paused' ? 'RESUME' : 'PAUSE', ui, false);
-  drawSystemButton(ctx, 'sound', ui.soundOn ? 'SOUND' : 'MUTED', ui, !ui.soundOn);
-  drawSystemButton(ctx, 'haptic', ui.hapticOn ? 'BUZZ' : 'QUIET', ui, !ui.hapticOn);
-
+  drawSwitch(ctx, 'sound', ui.soundOn ? 'Sound' : 'Muted', ui.soundOn, ui);
+  drawSwitch(ctx, 'haptic', 'Buzz', ui.hapticOn, ui);
+  drawSwitch(ctx, 'gameA', 'Game A', session.status !== 'menu' && session.mode === 'A', ui);
+  drawSwitch(ctx, 'gameB', 'Game B', session.status !== 'menu' && session.mode === 'B', ui);
+  drawSwitch(ctx, 'pause', session.status === 'paused' ? 'Resume' : 'Pause', session.status === 'paused', ui);
   for (const lane of LANES) {
-    const rect = CONTROLS[lane];
-    const active = session.wolfLane === lane;
-    const held = ui.heldControl === lane;
-    drawButton(ctx, rect.x, rect.y + (held ? 2 : 0), rect.w, rect.h, LANE_COLOR[lane], active, held);
-    const hint = LANE_HINT[lane];
-    ctx.fillStyle = '#3b2418';
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 18px Verdana, sans-serif';
-    ctx.fillText(hint.arrow, rect.x + rect.w / 2, rect.y + (held ? 24 : 22));
-    ctx.font = 'bold 12px Verdana, sans-serif';
-    ctx.fillText(hint.name, rect.x + rect.w / 2, rect.y + (held ? 42 : 40));
-    ctx.font = '10px Verdana, sans-serif';
-    ctx.fillStyle = '#6a4630';
-    ctx.fillText(hint.key, rect.x + rect.w / 2, rect.y + (held ? 56 : 54));
+    if (!isLaneControl(lane)) continue;
+    drawRedButton(ctx, lane, session.wolfLane === lane, ui.heldControl === lane);
   }
-
-  drawModeButton(ctx, 'gameA', 'A', '3 CHUTES', session, ui);
-  drawModeButton(ctx, 'gameB', 'B', '4 CHUTES', session, ui);
 }
 
-function drawSystemButton(
+function drawSwitch(
   ctx: CanvasRenderingContext2D,
-  id: 'pause' | 'sound' | 'haptic',
+  id: 'sound' | 'haptic' | 'gameA' | 'gameB' | 'pause',
   label: string,
+  lit: boolean,
   ui: UiState,
-  dim: boolean,
 ): void {
   const rect = CONTROLS[id];
   const held = ui.heldControl === id;
-  ctx.fillStyle = dim ? '#4a3428' : '#6b3a28';
-  roundRect(ctx, rect.x, rect.y + (held ? 1 : 0), rect.w, rect.h, 6);
+  ctx.fillStyle = held ? '#c9d4c4' : '#e7eee4';
+  ctx.strokeStyle = '#314238';
+  ctx.lineWidth = 1.4;
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
   ctx.fill();
-  ctx.strokeStyle = '#e6c48a';
-  ctx.lineWidth = 1.5;
   ctx.stroke();
-  ctx.fillStyle = '#fff4e4';
+  ctx.fillStyle = lit ? '#ff9a1a' : '#6d7270';
+  ctx.beginPath();
+  ctx.arc(rect.x + rect.w - 12, rect.y + rect.h / 2, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#1c241c';
   ctx.font = 'bold 11px Verdana, sans-serif';
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + (held ? 1 : 0));
+  ctx.fillText(label, rect.x + 8, rect.y + rect.h / 2 + (held ? 1 : 0));
   ctx.textBaseline = 'alphabetic';
 }
 
-function drawButton(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  color: string,
-  active: boolean,
-  held: boolean,
-): void {
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  roundRect(ctx, x + 2, y + 3, w, h, 8);
+function drawRedButton(ctx: CanvasRenderingContext2D, id: LaneId, active: boolean, held: boolean): void {
+  const rect = CONTROLS[id];
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2 + (held ? 1 : 0);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.arc(cx, cy + 3, 24, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = held ? '#fff4e4' : active ? '#fff8ee' : '#f0d2b4';
-  roundRect(ctx, x, y, w, h, 8);
+  const gloss = ctx.createRadialGradient(cx - 6, cy - 8, 4, cx, cy, 26);
+  gloss.addColorStop(0, '#ff5a4a');
+  gloss.addColorStop(0.55, RED);
+  gloss.addColorStop(1, '#8d120c');
+  ctx.fillStyle = gloss;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 24, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = active ? color : '#6a4630';
+  ctx.strokeStyle = active ? '#ffe08a' : '#5a100c';
   ctx.lineWidth = active ? 4 : 2;
   ctx.stroke();
-  ctx.fillStyle = color;
-  roundRect(ctx, x + 5, y + 5, w - 10, 6, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(cx - 6, cy - 8, 8, 5, -0.6, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function drawModeButton(
-  ctx: CanvasRenderingContext2D,
-  id: 'gameA' | 'gameB',
-  mode: 'A' | 'B',
-  subtitle: string,
-  session: Session,
-  ui: UiState,
-): void {
-  const rect = CONTROLS[id];
-  const selected = session.status !== 'menu' && session.mode === mode;
-  const held = ui.heldControl === id;
-  const y = rect.y + (held ? 2 : 0);
-  ctx.fillStyle = selected ? '#8d2f24' : '#5c2a22';
-  roundRect(ctx, rect.x, y, rect.w, rect.h, 8);
-  ctx.fill();
-  ctx.strokeStyle = ui.showRecord && held ? '#ffe08a' : '#f0c48a';
-  ctx.lineWidth = selected ? 3 : 1.5;
-  ctx.stroke();
-  ctx.fillStyle = '#fff6e8';
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 20px Verdana, sans-serif';
-  ctx.fillText(`GAME ${mode}`, rect.x + rect.w / 2, y + 28);
-  ctx.font = '11px Verdana, sans-serif';
-  ctx.fillStyle = '#f0d0b0';
-  ctx.fillText(subtitle, rect.x + rect.w / 2, y + 48);
 }
 
 function drawOverlay(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
-  if (session.status === 'playing' && !session.notice) return;
   if (session.status === 'playing' && session.notice) {
-    drawBanner(ctx, session.notice.text);
+    ctx.fillStyle = 'rgba(20, 40, 24, 0.88)';
+    roundRect(ctx, LCD.x + 90, LCD.y + 8, 220, 22, 4);
+    ctx.fill();
+    ctx.fillStyle = '#f3f6ea';
+    ctx.font = 'bold 12px Verdana, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(session.notice.text, LCD.x + 200, LCD.y + 23);
     return;
   }
+  if (session.status === 'playing') return;
 
-  ctx.fillStyle = 'rgba(28, 16, 12, 0.72)';
-  roundRect(ctx, 24, 86, 312, 300, 16);
-  ctx.fill();
-  ctx.strokeStyle = '#e6c48a';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
+  ctx.fillStyle = 'rgba(27, 43, 34, 0.78)';
+  ctx.fillRect(LCD.x, LCD.y, LCD.w, LCD.h);
+  ctx.fillStyle = '#f4f7ef';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff4d8';
+  const cx = LCD.x + LCD.w / 2;
   if (session.status === 'menu') {
-    ctx.font = 'bold 26px Verdana, sans-serif';
-    ctx.fillText('NU, POGODI!', 180, 130);
     ctx.font = 'bold 16px Verdana, sans-serif';
-    ctx.fillStyle = '#f0c48a';
-    ctx.fillText('WOLF AND EGGS', 180, 156);
-    ctx.font = '13px Verdana, sans-serif';
-    ctx.fillStyle = '#fff6e8';
+    ctx.fillText('CATCH THE EGGS', cx, LCD.y + 78);
+    ctx.font = '12px Verdana, sans-serif';
     const lines = [
-      'Catch eggs with the wolf.',
+      'Move the wolf with the red buttons.',
       'Three penalties end the run.',
-      'Game A closes one chute.',
+      'Game A uses three chutes.',
       'Game B uses all four.',
-      'Hold GAME A or B to see the record.',
+      'Hold Game A or Game B to see the record.',
     ];
-    lines.forEach((line, index) => ctx.fillText(line, 180, 196 + index * 20));
+    lines.forEach((line, index) => ctx.fillText(line, cx, LCD.y + 108 + index * 18));
+    if (ui.showRecord) {
+      ctx.font = 'bold 13px Verdana, sans-serif';
+      ctx.fillStyle = '#ffe08a';
+      ctx.fillText(`RECORD ${session.highScore.toString().padStart(3, '0')}`, cx, LCD.y + 214);
+    }
   } else if (session.status === 'paused') {
-    ctx.font = 'bold 28px Verdana, sans-serif';
-    ctx.fillText('PAUSED', 180, 180);
-    ctx.font = '14px Verdana, sans-serif';
-    ctx.fillText('Eggs stay where they are.', 180, 214);
-    ctx.fillText('Press PAUSE to continue.', 180, 236);
-  } else if (session.status === 'gameover') {
-    ctx.font = 'bold 28px Verdana, sans-serif';
-    ctx.fillText('GAME OVER', 180, 150);
-    ctx.font = 'bold 18px Verdana, sans-serif';
+    ctx.font = 'bold 22px Verdana, sans-serif';
+    ctx.fillText('PAUSED', cx, LCD.y + 110);
+    ctx.font = '13px Verdana, sans-serif';
+    ctx.fillText('Eggs stay where they are.', cx, LCD.y + 140);
+    ctx.fillText('Press Pause to continue.', cx, LCD.y + 160);
+  } else {
+    ctx.font = 'bold 22px Verdana, sans-serif';
+    ctx.fillText('GAME OVER', cx, LCD.y + 90);
+    ctx.font = 'bold 16px Verdana, sans-serif';
     ctx.fillStyle = '#d6ff6a';
-    ctx.fillText(`SCORE ${session.displayScore.toString().padStart(3, '0')}`, 180, 196);
+    ctx.fillText(`SCORE ${session.displayScore.toString().padStart(3, '0')}`, cx, LCD.y + 124);
     ctx.fillStyle = '#ffe08a';
-    ctx.fillText(`BEST ${session.highScore.toString().padStart(3, '0')}`, 180, 224);
-    ctx.fillStyle = '#fff6e8';
-    ctx.font = '14px Verdana, sans-serif';
-    ctx.fillText('Tap GAME A or GAME B', 180, 268);
-    ctx.fillText('to play again.', 180, 288);
+    ctx.fillText(`BEST ${session.highScore.toString().padStart(3, '0')}`, cx, LCD.y + 148);
+    ctx.fillStyle = '#f4f7ef';
+    ctx.font = '13px Verdana, sans-serif';
+    ctx.fillText('Press Game A or Game B', cx, LCD.y + 182);
   }
-
-  if (ui.showRecord && session.status === 'menu') {
-    ctx.font = 'bold 14px Verdana, sans-serif';
-    ctx.fillStyle = '#ffe08a';
-    ctx.fillText(`RECORD ${session.highScore.toString().padStart(3, '0')}`, 180, 360);
-  }
-}
-
-function drawBanner(ctx: CanvasRenderingContext2D, text: string): void {
-  ctx.fillStyle = 'rgba(42, 22, 14, 0.88)';
-  roundRect(ctx, 70, 78, 220, 32, 8);
-  ctx.fill();
-  ctx.fillStyle = '#ffe08a';
-  ctx.font = 'bold 14px Verdana, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(text, 180, 99);
 }

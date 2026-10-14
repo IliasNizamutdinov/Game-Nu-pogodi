@@ -108,7 +108,7 @@ describe('hare clock', () => {
 describe('project wiring', () => {
   it('publishes under the repository path', () => {
     const config = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
-    expect(config).toContain("base: '/Game-Nu-pogodi/'");
+    expect(config).toContain("'/Game-Nu-pogodi/'");
   });
 
   it('does not schedule gameplay with setInterval', () => {

@@ -7,10 +7,10 @@ const CHROME = process.env.CHROME_PATH || '/usr/local/bin/google-chrome';
 
 function buttonCenter(id) {
   const controls = {
-    pause: { x: 8, y: 528, w: 110, h: 36 },
-    gameA: { x: 178, y: 572, w: 174, h: 66 },
-    gameB: { x: 178, y: 646, w: 174, h: 66 },
-    ul: { x: 8, y: 572, w: 78, h: 66 },
+    pause: { x: 516, y: 132, w: 114, h: 36 },
+    gameA: { x: 516, y: 52, w: 114, h: 36 },
+    gameB: { x: 516, y: 92, w: 114, h: 36 },
+    ul: { x: 12, y: 172, w: 74, h: 68 },
   };
   const rect = controls[id];
   return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
@@ -22,8 +22,8 @@ async function tapLogical(page, id) {
     const canvas = document.querySelector('canvas');
     const rect = canvas.getBoundingClientRect();
     return {
-      x: rect.left + (x / 360) * rect.width,
-      y: rect.top + (y / 740) * rect.height,
+      x: rect.left + (x / 640) * rect.width,
+      y: rect.top + (y / 360) * rect.height,
     };
   }, point);
   await page.touchscreen.tap(target.x, target.y);

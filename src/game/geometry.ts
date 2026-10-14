@@ -1,11 +1,14 @@
 import type { LaneId, Point, Rect } from './types';
 
-/** Portrait board. The canvas is scaled uniformly to the visible viewport. */
-export const LOGICAL_W = 360;
-export const LOGICAL_H = 740;
+/**
+ * Wide handheld board, matching the pocket-toy composition:
+ * red buttons on both sides, switches on the right, LCD in the center.
+ */
+export const LOGICAL_W = 640;
+export const LOGICAL_H = 360;
 
-export const EGG_RADIUS = 16;
-export const GROUND_Y = 500;
+export const EGG_RADIUS = 8;
+export const GROUND_Y = 286;
 
 export const LANES: readonly LaneId[] = ['ul', 'ur', 'll', 'lr'];
 
@@ -28,28 +31,28 @@ function build(points: readonly Point[]): Path {
 
 const RAW_PATHS: Record<LaneId, readonly Point[]> = {
   ul: [
-    { x: 58, y: 132 },
-    { x: 88, y: 176 },
-    { x: 110, y: 222 },
-    { x: 126, y: 268 },
+    { x: 136, y: 112 },
+    { x: 176, y: 136 },
+    { x: 210, y: 158 },
+    { x: 236, y: 178 },
   ],
   ur: [
-    { x: 302, y: 132 },
-    { x: 272, y: 176 },
-    { x: 250, y: 222 },
-    { x: 234, y: 268 },
+    { x: 468, y: 112 },
+    { x: 428, y: 136 },
+    { x: 394, y: 158 },
+    { x: 368, y: 178 },
   ],
   ll: [
-    { x: 52, y: 276 },
-    { x: 80, y: 328 },
-    { x: 106, y: 372 },
-    { x: 130, y: 412 },
+    { x: 148, y: 186 },
+    { x: 186, y: 208 },
+    { x: 220, y: 226 },
+    { x: 248, y: 242 },
   ],
   lr: [
-    { x: 308, y: 276 },
-    { x: 280, y: 328 },
-    { x: 254, y: 372 },
-    { x: 230, y: 412 },
+    { x: 456, y: 186 },
+    { x: 418, y: 208 },
+    { x: 384, y: 226 },
+    { x: 356, y: 242 },
   ],
 };
 
@@ -61,27 +64,30 @@ export const PATHS: Record<LaneId, Path> = {
 };
 
 export const CHICKENS: Record<LaneId, Point> = {
-  ul: { x: 54, y: 112 },
-  ur: { x: 306, y: 112 },
-  ll: { x: 48, y: 254 },
-  lr: { x: 312, y: 254 },
+  ul: { x: 132, y: 96 },
+  ur: { x: 472, y: 96 },
+  ll: { x: 146, y: 170 },
+  lr: { x: 458, y: 170 },
 };
 
-export const HOUSE: Rect = { x: 6, y: 418, w: 78, h: 96 };
-export const HARE_WINDOW: Rect = { x: 26, y: 448, w: 40, h: 34 };
+/** Gray-green LCD glass inside the bezel. */
+export const LCD: Rect = { x: 104, y: 48, w: 400, h: 248 };
 
-export const HUD: Rect = { x: 8, y: 8, w: 344, h: 52 };
+export const HOUSE: Rect = { x: 110, y: 54, w: 62, h: 48 };
+export const HARE_WINDOW: Rect = { x: 128, y: 66, w: 28, h: 22 };
+
+export const HUD: Rect = { x: 230, y: 54, w: 92, h: 28 };
 
 export const CONTROLS = {
-  pause: { x: 8, y: 528, w: 110, h: 36 },
-  sound: { x: 126, y: 528, w: 110, h: 36 },
-  haptic: { x: 244, y: 528, w: 108, h: 36 },
-  ul: { x: 8, y: 572, w: 78, h: 66 },
-  ur: { x: 92, y: 572, w: 78, h: 66 },
-  gameA: { x: 178, y: 572, w: 174, h: 66 },
-  ll: { x: 8, y: 646, w: 78, h: 66 },
-  lr: { x: 92, y: 646, w: 78, h: 66 },
-  gameB: { x: 178, y: 646, w: 174, h: 66 },
+  sound: { x: 516, y: 12, w: 62, h: 36 },
+  haptic: { x: 582, y: 12, w: 48, h: 36 },
+  gameA: { x: 516, y: 52, w: 114, h: 36 },
+  gameB: { x: 516, y: 92, w: 114, h: 36 },
+  pause: { x: 516, y: 132, w: 114, h: 36 },
+  ul: { x: 12, y: 172, w: 74, h: 68 },
+  ll: { x: 12, y: 248, w: 74, h: 68 },
+  ur: { x: 554, y: 172, w: 74, h: 68 },
+  lr: { x: 554, y: 248, w: 74, h: 68 },
 } as const satisfies Record<string, Rect>;
 
 export type ControlId = keyof typeof CONTROLS;

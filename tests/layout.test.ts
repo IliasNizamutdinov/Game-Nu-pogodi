@@ -17,10 +17,17 @@ function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
+function circleHitsRect(x: number, y: number, radius: number, rect: Rect): boolean {
+  const nearestX = Math.max(rect.x, Math.min(x, rect.x + rect.w));
+  const nearestY = Math.max(rect.y, Math.min(y, rect.y + rect.h));
+  const dx = x - nearestX;
+  const dy = y - nearestY;
+  return dx * dx + dy * dy < radius * radius;
+}
+
 describe('board layout', () => {
   it('keeps controls on the board and clear of the chutes', () => {
     const ids = Object.keys(CONTROLS) as ControlId[];
-    const top = Math.min(...ids.map((id) => CONTROLS[id].y));
     for (const id of ids) {
       const rect = CONTROLS[id];
       expect(rect.x).toBeGreaterThanOrEqual(0);
@@ -43,9 +50,11 @@ describe('board layout', () => {
       for (let step = 0; step <= 20; step += 1) {
         const point = pointOnPath(lane, step / 20);
         expect(point.y).toBeGreaterThanOrEqual(previousY - 0.01);
-        expect(point.y + EGG_RADIUS).toBeLessThan(top);
         expect(point.x - EGG_RADIUS).toBeGreaterThan(0);
         expect(point.x + EGG_RADIUS).toBeLessThan(LOGICAL_W);
+        for (const id of ids) {
+          expect(circleHitsRect(point.x, point.y, EGG_RADIUS, CONTROLS[id])).toBe(false);
+        }
         previousY = point.y;
       }
     }
@@ -82,7 +91,10 @@ describe('board layout', () => {
     expect(shouldShowRecord(INPUT.longPressMs)).toBe(true);
     expect(
       clientToLogical(190, 390, { left: 10, top: 20, width: LOGICAL_W, height: LOGICAL_H }),
-    ).toEqual({ x: 180, y: 370 });
+    ).toMatchObject({ x: 180 });
+    expect(
+      clientToLogical(190, 390, { left: 10, top: 20, width: LOGICAL_W, height: LOGICAL_H }).y,
+    ).toBeCloseTo(370, 5);
     expect(clientToLogical(0, 0, { left: 0, top: 0, width: 0, height: 10 })).toEqual({ x: -1, y: -1 });
   });
 });

@@ -2,9 +2,13 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
-  base: '/Game-Nu-pogodi/',
-  plugins: [
+export default defineConfig(({ mode }) => {
+  const phoneFile = mode === 'phone';
+  return {
+  base: phoneFile ? './' : '/Game-Nu-pogodi/',
+  plugins: phoneFile
+    ? []
+    : [
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
@@ -45,8 +49,10 @@ export default defineConfig({
       },
     }),
   ],
+  build: phoneFile ? { outDir: 'dist-phone', emptyOutDir: true } : undefined,
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
   },
+};
 });

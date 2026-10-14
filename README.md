@@ -57,6 +57,16 @@ Open [http://localhost:5173/Game-Nu-pogodi/](http://localhost:5173/Game-Nu-pogod
 
 The `/Game-Nu-pogodi/` prefix matches the GitHub Pages project URL, so local play and the published build use the same paths.
 
+The picture is a wide pocket toy: silver case, green LCD, four red buttons and side switches.
+
+## File for a phone
+
+```bash
+npm run phone
+```
+
+This writes `release/wolf-catches-eggs.html`. Copy that single file to the phone and open it in Chrome. Details are in `INSTRUCTIONS.ru.md`.
+
 ## Production build
 
 ```bash

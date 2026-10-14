@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit && vite build",
+    "phone": "vite build --mode phone && node scripts/pack-phone.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "verify:dist": "node scripts/verify-dist.mjs",
     "icons": "node scripts/generate-icons.mjs",
