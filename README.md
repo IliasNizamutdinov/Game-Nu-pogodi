@@ -59,13 +59,17 @@ The `/Game-Nu-pogodi/` prefix matches the GitHub Pages project URL, so local pla
 
 The picture is a wide pocket toy: silver case, green LCD, four red buttons and side switches.
 
-## File for a phone
+## Android APK
+
+The installable test build is `release/wolf-and-eggs.apk` (`com.iliasnizamutdinov.wolfandeggs`, version 1.0.0). It is a debug-signed package for sideloading. Google Play needs a release Android App Bundle; see `INSTRUCTIONS.ru.md`.
+
+Rebuild it where the Android SDK is installed:
 
 ```bash
-npm run phone
+export ANDROID_HOME=/path/to/android-sdk
+export JAVA_HOME=/path/to/jdk
+npm run apk
 ```
-
-This writes `release/wolf-catches-eggs.html`. Copy that single file to the phone and open it in Chrome. Details are in `INSTRUCTIONS.ru.md`.
 
 ## Production build
 

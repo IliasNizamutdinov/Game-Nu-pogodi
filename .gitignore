@@ -1,6 +1,11 @@
 node_modules
 dist
 dist-phone
+android/keystore.properties
+android/*.jks
+android/*.keystore
+*.jks
+*.keystore
 .DS_Store
 *.local
 .vite
