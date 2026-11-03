@@ -79,15 +79,16 @@ export const HARE_WINDOW: Rect = { x: 128, y: 66, w: 28, h: 22 };
 export const HUD: Rect = { x: 230, y: 54, w: 92, h: 28 };
 
 export const CONTROLS = {
-  sound: { x: 516, y: 12, w: 62, h: 36 },
-  haptic: { x: 582, y: 12, w: 48, h: 36 },
-  gameA: { x: 516, y: 52, w: 114, h: 36 },
-  gameB: { x: 516, y: 92, w: 114, h: 36 },
-  pause: { x: 516, y: 132, w: 114, h: 36 },
-  ul: { x: 12, y: 172, w: 74, h: 68 },
-  ll: { x: 12, y: 248, w: 74, h: 68 },
-  ur: { x: 554, y: 172, w: 74, h: 68 },
-  lr: { x: 554, y: 248, w: 74, h: 68 },
+  exit: { x: 586, y: 6, w: 48, h: 40 },
+  sound: { x: 516, y: 50, w: 62, h: 36 },
+  haptic: { x: 582, y: 50, w: 52, h: 36 },
+  gameA: { x: 516, y: 90, w: 118, h: 36 },
+  gameB: { x: 516, y: 130, w: 118, h: 36 },
+  pause: { x: 516, y: 170, w: 118, h: 36 },
+  ul: { x: 12, y: 214, w: 74, h: 62 },
+  ll: { x: 12, y: 282, w: 74, h: 62 },
+  ur: { x: 554, y: 214, w: 74, h: 62 },
+  lr: { x: 554, y: 282, w: 74, h: 62 },
 } as const satisfies Record<string, Rect>;
 
 export type ControlId = keyof typeof CONTROLS;

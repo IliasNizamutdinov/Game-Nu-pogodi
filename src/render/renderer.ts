@@ -405,64 +405,116 @@ function drawWolf(ctx: CanvasRenderingContext2D, session: Session): void {
   const { x, y } = session.wolfVisual;
   const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 3;
   ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(facing, 1);
-  ctx.fillStyle = '#2c2c2c';
+  ctx.translate(x, y + 4);
+  ctx.scale(facing * 1.15, 1.15);
+  drawPocketWolf(ctx, bump);
+  ctx.restore();
+}
+
+/** Side-view pocket-toy wolf: tall ears, long muzzle, basket held out. */
+function drawPocketWolf(ctx: CanvasRenderingContext2D, bump: number): void {
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.3;
+  ctx.lineWidth = 1.4;
+  ctx.fillStyle = '#1a1a1a';
+
   ctx.beginPath();
-  ctx.ellipse(-2, -16, 10, 12, 0, 0, Math.PI * 2);
+  ctx.moveTo(-16, -8);
+  ctx.quadraticCurveTo(-28, -18, -24, -4);
+  ctx.quadraticCurveTo(-20, 2, -12, -2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(-4, -16, 11, 14, -0.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#3a3a3a';
+
+  ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
-  ctx.moveTo(-12, -10);
-  ctx.quadraticCurveTo(-22, -2, -16, 6);
-  ctx.quadraticCurveTo(-8, -2, -6, -8);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(0, -28, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(-6, -34);
-  ctx.lineTo(-9, -44);
-  ctx.lineTo(-1, -34);
+  ctx.moveTo(-8, -4);
+  ctx.lineTo(-12, 16);
+  ctx.lineTo(-4, 16);
+  ctx.lineTo(-2, -2);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(2, -34);
-  ctx.lineTo(6, -45);
-  ctx.lineTo(7, -33);
+  ctx.moveTo(2, -2);
+  ctx.lineTo(0, 16);
+  ctx.lineTo(8, 16);
+  ctx.lineTo(8, -4);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#f4f4f4';
+
+  ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
-  ctx.ellipse(5, -27, 5, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(6, -30, 10, 9, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(14, -28, 8, 5, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-2, -36);
+  ctx.lineTo(-6, -52);
+  ctx.lineTo(2, -36);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(4, -37);
+  ctx.lineTo(6, -54);
+  ctx.lineTo(11, -36);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#f4f1ea';
+  ctx.beginPath();
+  ctx.ellipse(16, -29, 7, 4.5, 0.15, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.arc(7, -27, 1, 0, Math.PI * 2);
+  ctx.moveTo(20, -31);
+  ctx.lineTo(25, -29);
+  ctx.lineTo(20, -27);
   ctx.fill();
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 3;
+
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.moveTo(2, -8);
-  ctx.quadraticCurveTo(12, -16 - bump, 14, -2 - bump);
+  ctx.arc(12, -32, 2.3, 0, Math.PI * 2);
+  ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(12.7, -32, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(2, -12);
+  ctx.quadraticCurveTo(10, -18 - bump, 16, -4 - bump);
+  ctx.stroke();
+
   ctx.fillStyle = '#e07a2f';
   ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.2;
-  roundRect(ctx, 6, -6 - bump, 16, 9, 2);
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, 8, -8 - bump, 20, 12, 3);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#1d1d1d';
-  ctx.fillRect(-8, -4, 4, 12);
-  ctx.fillRect(2, -4, 4, 12);
-  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(18, -8 - bump, 8, Math.PI, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#fff6dc';
+  ctx.beginPath();
+  ctx.ellipse(16, -3 - bump, 4, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawCatchFloater(ctx: CanvasRenderingContext2D, session: Session): void {
@@ -545,8 +597,9 @@ function drawPenaltySlot(
 }
 
 function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
+  drawExitButton(ctx, ui.heldControl === 'exit');
   drawSwitch(ctx, 'sound', ui.soundOn ? 'Sound' : 'Muted', ui.soundOn, ui);
-  drawSwitch(ctx, 'haptic', 'Buzz', ui.hapticOn, ui);
+  drawSwitch(ctx, 'haptic', 'Vib', ui.hapticOn, ui);
   drawSwitch(ctx, 'gameA', 'Game A', session.status !== 'menu' && session.mode === 'A', ui);
   drawSwitch(ctx, 'gameB', 'Game B', session.status !== 'menu' && session.mode === 'B', ui);
   drawSwitch(ctx, 'pause', session.status === 'paused' ? 'Resume' : 'Pause', session.status === 'paused', ui);
@@ -554,6 +607,27 @@ function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiSta
     if (!isLaneControl(lane)) continue;
     drawRedButton(ctx, lane, session.wolfLane === lane, ui.heldControl === lane);
   }
+}
+
+function drawExitButton(ctx: CanvasRenderingContext2D, held: boolean): void {
+  const rect = CONTROLS.exit;
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2 + (held ? 1 : 0);
+  ctx.fillStyle = held ? '#ffd0cc' : '#fff';
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#c41212';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, cy - 6);
+  ctx.lineTo(cx + 6, cy + 6);
+  ctx.moveTo(cx + 6, cy - 6);
+  ctx.lineTo(cx - 6, cy + 6);
+  ctx.stroke();
 }
 
 function drawSwitch(

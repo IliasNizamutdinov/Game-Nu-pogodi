@@ -7,33 +7,31 @@
  * original pocket game used these exact intervals.
  */
 export const SPEED = {
-  /** Path fraction per second at 0 points on the first cycle (~5.6s per egg). */
-  initial: 0.18,
-  /** Added for every point scored inside the current hundred. */
-  perPoint: 0.00105,
+  /** Path fraction per second at 0 points. About 8 seconds for the first egg. */
+  initial: 0.12,
+  /** Small step so speed climbs gradually inside each hundred. */
+  perPoint: 0.00035,
   /**
-   * Added for each completed hundred inside the cycle.
-   * Kept smaller than 100 * perPoint so speed dips at 100, 200, ... without
-   * falling back to the original value.
+   * Added for each completed hundred.
+   * Smaller than 100 * perPoint, so each hundred still dips a little.
    */
-  perHundred: 0.028,
+  perHundred: 0.01,
   /**
    * Added after each 999 → 0 rollover.
-   * Must stay below the speed gained across a full cycle so the new cycle
-   * starts a little slower than 999, but still far above the first-cycle start.
+   * Below a full cycle of gains, and still well above the opening speed.
    */
-  perCycle: 0.2,
-  /** Safety cap so later cycles stay readable instead of becoming instant. */
-  max: 0.92,
+  perCycle: 0.12,
+  /** Late-game ceiling. An egg still takes a little over 2 seconds. */
+  max: 0.42,
 } as const;
 
 export const SPAWN = {
-  baseInterval: 2.35,
-  minInterval: 0.68,
+  baseInterval: 2.2,
+  minInterval: 1.35,
   maxMoving: 4,
   /** Do not drop another egg on a lane that still has one in this leading fraction. */
-  minGap: 0.34,
-  firstEggDelay: 0.48,
+  minGap: 0.4,
+  firstEggDelay: 0.55,
 } as const;
 
 export const HARE = {

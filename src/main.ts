@@ -76,7 +76,7 @@ function consumeEvents(): void {
       vibrate(12, settings.hapticOn);
     } else if (event.type === 'miss') {
       sfx.play('miss');
-      vibrate(event.hare ? [12, 28, 18] : 22, settings.hapticOn);
+      vibrate(280, settings.hapticOn);
     } else if (event.type === 'gameover') {
       sfx.play('gameover');
       vibrate([28, 36, 28, 36, 50], settings.hapticOn);
@@ -100,6 +100,20 @@ function frame(dt: number): void {
 }
 
 const loop = new GameLoop(frame);
+
+async function exitGame(): Promise<void> {
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (Capacitor.isNativePlatform()) {
+      const { App } = await import('@capacitor/app');
+      await App.exitApp();
+      return;
+    }
+  } catch {
+    // Browser builds have no native bridge.
+  }
+  window.close();
+}
 
 function beginGame(mode: GameMode): void {
   sfx.unlock();
@@ -210,6 +224,12 @@ canvas.addEventListener('pointerdown', (event) => {
   if (id === 'haptic') {
     ui.heldControl = id;
     toggleHaptic();
+    return;
+  }
+  if (id === 'exit') {
+    ui.heldControl = id;
+    paint();
+    void exitGame();
     return;
   }
   clearPress();

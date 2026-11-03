@@ -65,9 +65,26 @@ export class Sfx {
 
 export function vibrate(pattern: number | number[], enabled: boolean): void {
   if (!enabled) return;
+  const duration = Array.isArray(pattern)
+    ? Math.max(160, pattern.reduce((sum, part) => sum + part, 0))
+    : Math.max(40, pattern);
+  void vibrateNative(duration, pattern);
+}
+
+async function vibrateNative(duration: number, pattern: number | number[]): Promise<void> {
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (Capacitor.isNativePlatform()) {
+      const { Haptics } = await import('@capacitor/haptics');
+      await Haptics.vibrate({ duration });
+      return;
+    }
+  } catch {
+    // The browser build has no native bridge.
+  }
   try {
     navigator.vibrate?.(pattern);
   } catch {
-    // Some browsers block vibration outside a direct tap. The game still runs.
+    // Vibration is optional when the platform blocks it.
   }
 }

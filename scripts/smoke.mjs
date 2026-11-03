@@ -7,10 +7,10 @@ const CHROME = process.env.CHROME_PATH || '/usr/local/bin/google-chrome';
 
 function buttonCenter(id) {
   const controls = {
-    pause: { x: 516, y: 132, w: 114, h: 36 },
-    gameA: { x: 516, y: 52, w: 114, h: 36 },
-    gameB: { x: 516, y: 92, w: 114, h: 36 },
-    ul: { x: 12, y: 172, w: 74, h: 68 },
+    pause: { x: 516, y: 170, w: 118, h: 36 },
+    gameA: { x: 516, y: 90, w: 118, h: 36 },
+    gameB: { x: 516, y: 130, w: 118, h: 36 },
+    ul: { x: 12, y: 214, w: 74, h: 62 },
   };
   const rect = controls[id];
   return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };

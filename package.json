@@ -18,11 +18,15 @@
   "devDependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
-    "@capacitor/core": "^8.5.3",
+    "@capacitor/core": "^8.6.0",
     "puppeteer-core": "^24.23.0",
     "typescript": "^5.9.2",
     "vite": "^6.3.5",
     "vite-plugin-pwa": "^1.0.2",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/haptics": "^8.0.2"
   }
 }
