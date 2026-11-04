@@ -2,17 +2,13 @@ import { LANES } from './geometry';
 import type { GameMode, LaneId } from './types';
 
 /**
- * Game A leaves one chute unused. The closed chute follows the penalty total.
- * Values are half-points: 0, 1=0.5, 2=1, 3=1.5, 4=2, 5=2.5.
- * Game B uses every chute.
+ * Game A keeps the lower-left chute closed for the whole run.
+ * A miss must not move that closure to another chute.
+ * Game B uses every chute. The penalty argument is unused and kept so callers stay stable.
  */
-export function inactiveLane(mode: GameMode, penaltyHalves: number): LaneId | null {
+export function inactiveLane(mode: GameMode, _penaltyHalves: number): LaneId | null {
   if (mode !== 'A') return null;
-  const halves = Math.max(0, Math.floor(penaltyHalves));
-  if (halves <= 0) return 'll';
-  if (halves <= 2) return 'lr';
-  if (halves <= 4) return 'ul';
-  return 'ur';
+  return 'll';
 }
 
 export function activeLanes(mode: GameMode, penaltyHalves: number): LaneId[] {

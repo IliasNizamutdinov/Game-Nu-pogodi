@@ -14,16 +14,7 @@ The pictures, sounds and code in this repository are original. They are not extr
 - Eggs start slowly. Speed rises with every point, dips a little at each hundred, and never falls all the way back to the opening pace.
 - At 999 the next catch shows 000. The record stays 999, penalties are kept, and speed drops slightly while remaining much faster than a new game.
 - Penalties clear once when the displayed score crosses 200, and once when it crosses 500. The same thresholds work again on later cycles. Rolling past 999 does not clear them.
-- **Game A** uses three chutes. The closed chute depends on the penalties:
-
-  | Penalties | Closed chute |
-  | --- | --- |
-  | 0 | Lower left |
-  | 0.5 and 1 | Lower right |
-  | 1.5 and 2 | Upper left |
-  | 2.5 | Upper right |
-
-  Eggs already on a chute finish their run when the pattern changes. New eggs are not sent down a chute that is closing.
+- **Game A** uses three chutes. The lower-left chute stays closed for the whole run, including after a miss. Eggs never roll down it.
 - **Game B** uses all four chutes.
 - Starting either mode begins a new run. The saved record is kept. Only one animation loop is active.
 - Pause freezes eggs, spawning and the hare. Hiding the browser tab pauses the run as well, so time spent in the background is not simulated.

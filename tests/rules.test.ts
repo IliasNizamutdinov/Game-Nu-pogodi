@@ -6,7 +6,6 @@ import { stepHare, createHare } from '../src/game/hare';
 import { activeLanes, inactiveLane } from '../src/game/lanes';
 import { formatPenalty, penaltySlots } from '../src/game/penalties';
 import { spawnIntervalFor, speedFor } from '../src/game/speed';
-import type { LaneId } from '../src/game/types';
 
 describe('speed curve', () => {
   it('starts slow and rises inside a hundred', () => {
@@ -68,20 +67,11 @@ describe('penalties and game A chutes', () => {
     expect(penaltySlots(6)).toEqual(['solid', 'solid', 'solid']);
   });
 
-  it('closes the chute required by the current penalty', () => {
-    const table: Array<[number, LaneId]> = [
-      [0, 'll'],
-      [1, 'lr'],
-      [2, 'lr'],
-      [3, 'ul'],
-      [4, 'ul'],
-      [5, 'ur'],
-    ];
-    for (const [halves, lane] of table) {
-      expect(inactiveLane('A', halves)).toBe(lane);
+  it('keeps the same closed chute in game A after every penalty', () => {
+    for (const halves of [0, 1, 2, 3, 4, 5, 6]) {
+      expect(inactiveLane('A', halves)).toBe('ll');
       const open = activeLanes('A', halves);
-      expect(open).toHaveLength(3);
-      expect(open).not.toContain(lane);
+      expect(open).toEqual(['ul', 'ur', 'lr']);
     }
   });
 

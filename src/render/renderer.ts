@@ -464,15 +464,15 @@ function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
 
 function drawWolf(ctx: CanvasRenderingContext2D, session: Session): void {
   const upper = session.wolfLane === 'ul' || session.wolfLane === 'ur';
-  const sprite = upper ? wolfUpperSprite : wolfLowerSprite;
+  const sprite = upper ? wolfLowerSprite : wolfUpperSprite;
   if (!spriteReady(sprite)) return;
   const facing = session.wolfLane === 'ul' || session.wolfLane === 'll' ? -1 : 1;
   const { x, y } = session.wolfVisual;
   const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 2;
-  const height = upper ? 96 : 100;
+  const height = upper ? 100 : 96;
   const width = height * (sprite.naturalWidth / sprite.naturalHeight);
-  const basketX = upper ? 0.7 : 0.74;
-  const basketY = upper ? 0.6 : 0.5;
+  const basketX = upper ? 0.74 : 0.7;
+  const basketY = upper ? 0.5 : 0.6;
   ctx.save();
   ctx.translate(x, y + bump);
   ctx.scale(facing, 1);

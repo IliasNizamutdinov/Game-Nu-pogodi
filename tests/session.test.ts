@@ -225,16 +225,18 @@ describe('modes, pause and the frame cap', () => {
     traveling.progress = 0.25;
     missLane(session, 'ul');
     expect(session.penaltyHalves).toBe(2);
-    expect(inactiveLane(session.mode, session.penaltyHalves)).toBe('lr');
+    expect(inactiveLane(session.mode, session.penaltyHalves)).toBe('ll');
     expect(traveling.state).toBe('moving');
     expect(traveling.lane).toBe('lr');
     const progress = traveling.progress;
     tick(session, 1 / 60);
     expect(traveling.progress).toBeGreaterThan(progress);
     expect(traveling.lane).toBe('lr');
-    expect(canSpawnOnLane(session, 'lr')).toBe(false);
-    expect(spawnEgg(session, 'lr')).toBeNull();
-    expect(spawnEgg(session, 'll')?.lane).toBe('ll');
+    expect(canSpawnOnLane(session, 'll')).toBe(false);
+    expect(spawnEgg(session, 'll')).toBeNull();
+    traveling.progress = 0.6;
+    expect(canSpawnOnLane(session, 'lr')).toBe(true);
+    expect(spawnEgg(session, 'lr')?.lane).toBe('lr');
   });
 
   it('spawns on every chute in game B and only the open ones in game A', () => {
