@@ -1,3 +1,5 @@
+import henUrl from '../assets/hen.png';
+import wolfUrl from '../assets/wolf.png';
 import { ANIM } from '../game/config';
 import {
   CHICKENS,
@@ -30,6 +32,19 @@ export interface UiState {
 }
 
 const INK = '#1b2b22';
+
+function loadSprite(url: string): HTMLImageElement {
+  const image = new Image();
+  image.src = url;
+  return image;
+}
+
+const wolfSprite = loadSprite(wolfUrl);
+const henSprite = loadSprite(henUrl);
+
+function spriteReady(image: HTMLImageElement): boolean {
+  return image.complete && image.naturalWidth > 0;
+}
 const LCD_BG = '#c5ccbc';
 const RED = '#e10600';
 
@@ -253,39 +268,18 @@ function drawChicken(ctx: CanvasRenderingContext2D, lane: LaneId, session: Sessi
   ctx.save();
   ctx.globalAlpha = dimmed ? 0.4 : 1;
   ctx.translate(anchor.x, anchor.y + bob);
-  ctx.scale(facing, 1);
   ctx.strokeStyle = '#6b4a2a';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(-16, 4);
-  ctx.lineTo(16, 4);
+  ctx.moveTo(-18, 2);
+  ctx.lineTo(18, 2);
   ctx.stroke();
-  ctx.fillStyle = '#f4f1ea';
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.ellipse(0, -6, 11, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(9, -12, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#d02323';
-  ctx.beginPath();
-  ctx.ellipse(9, -17, 2.2, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#e0a020';
-  ctx.beginPath();
-  ctx.moveTo(13, -12);
-  ctx.lineTo(19, -10);
-  ctx.lineTo(13, -8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.arc(10, -13, 0.8, 0, Math.PI * 2);
-  ctx.fill();
+  if (spriteReady(henSprite)) {
+    const height = 40;
+    const width = height * (henSprite.naturalWidth / henSprite.naturalHeight);
+    ctx.scale(facing, 1);
+    ctx.drawImage(henSprite, -width * 0.62, -height * 0.9, width, height);
+  }
   ctx.restore();
 }
 
@@ -401,120 +395,18 @@ function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
 }
 
 function drawWolf(ctx: CanvasRenderingContext2D, session: Session): void {
+  if (!spriteReady(wolfSprite)) return;
   const facing = session.wolfLane === 'ul' || session.wolfLane === 'll' ? -1 : 1;
   const { x, y } = session.wolfVisual;
-  const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 3;
+  const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 2;
+  const height = 102;
+  const width = height * (wolfSprite.naturalWidth / wolfSprite.naturalHeight);
   ctx.save();
-  ctx.translate(x, y + 4);
-  ctx.scale(facing * 1.15, 1.15);
-  drawPocketWolf(ctx, bump);
+  ctx.translate(x, y + bump);
+  ctx.scale(facing, 1);
+  // Basket sits near the right-middle of the artwork, which is the catch point.
+  ctx.drawImage(wolfSprite, -width * 0.78, -height * 0.58, width, height);
   ctx.restore();
-}
-
-/** Side-view pocket-toy wolf: tall ears, long muzzle, basket held out. */
-function drawPocketWolf(ctx: CanvasRenderingContext2D, bump: number): void {
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.4;
-  ctx.fillStyle = '#1a1a1a';
-
-  ctx.beginPath();
-  ctx.moveTo(-16, -8);
-  ctx.quadraticCurveTo(-28, -18, -24, -4);
-  ctx.quadraticCurveTo(-20, 2, -12, -2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.ellipse(-4, -16, 11, 14, -0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath();
-  ctx.moveTo(-8, -4);
-  ctx.lineTo(-12, 16);
-  ctx.lineTo(-4, 16);
-  ctx.lineTo(-2, -2);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(2, -2);
-  ctx.lineTo(0, 16);
-  ctx.lineTo(8, 16);
-  ctx.lineTo(8, -4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath();
-  ctx.ellipse(6, -30, 10, 9, 0.15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(14, -28, 8, 5, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(-2, -36);
-  ctx.lineTo(-6, -52);
-  ctx.lineTo(2, -36);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(4, -37);
-  ctx.lineTo(6, -54);
-  ctx.lineTo(11, -36);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#f4f1ea';
-  ctx.beginPath();
-  ctx.ellipse(16, -29, 7, 4.5, 0.15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.moveTo(20, -31);
-  ctx.lineTo(25, -29);
-  ctx.lineTo(20, -27);
-  ctx.fill();
-
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(12, -32, 2.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(12.7, -32, 1, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 3.2;
-  ctx.beginPath();
-  ctx.moveTo(2, -12);
-  ctx.quadraticCurveTo(10, -18 - bump, 16, -4 - bump);
-  ctx.stroke();
-
-  ctx.fillStyle = '#e07a2f';
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, 8, -8 - bump, 20, 12, 3);
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(18, -8 - bump, 8, Math.PI, 0);
-  ctx.stroke();
-  ctx.fillStyle = '#fff6dc';
-  ctx.beginPath();
-  ctx.ellipse(16, -3 - bump, 4, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 function drawCatchFloater(ctx: CanvasRenderingContext2D, session: Session): void {
