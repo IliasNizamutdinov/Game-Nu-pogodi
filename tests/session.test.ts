@@ -7,6 +7,7 @@ import { formatPenalty } from '../src/game/penalties';
 import {
   canSpawnOnLane,
   createSession,
+  cycleDifficulty,
   onVisibilityChange,
   setWolfLane,
   spawnEgg,
@@ -110,6 +111,7 @@ describe('misses and the hare', () => {
       state: 'moving',
       animTime: 0,
       hareWasPresent: false,
+      kind: 'egg',
     });
     advance(session, 3);
     expect(session.status).toBe('gameover');
@@ -288,6 +290,7 @@ describe('modes, pause and the frame cap', () => {
       state: 'moving',
       animTime: 0,
       hareWasPresent: false,
+      kind: 'egg',
     });
     const timer = session.hare.timer;
     advance(session, 2);
@@ -322,9 +325,12 @@ describe('modes, pause and the frame cap', () => {
     for (let i = 0; i < frames && careful.status === 'playing'; i += 1) {
       let best: Egg | null = null;
       for (const egg of careful.eggs) {
-        if (egg.state === 'moving' && (!best || egg.progress > best.progress)) best = egg;
+        if (egg.state === 'moving' && egg.kind === 'egg' && (!best || egg.progress > best.progress)) best = egg;
       }
       if (best) setWolfLane(careful, best.lane);
+      else if (careful.eggs.some((egg) => egg.state === 'moving' && egg.kind === 'grenade')) {
+        setWolfLane(careful, 'ul');
+      }
       tick(careful, 1 / 60);
     }
     expect(careful.displayScore).toBeGreaterThan(12);
@@ -336,6 +342,55 @@ describe('modes, pause and the frame cap', () => {
     advance(still, 40);
     expect(still.status).toBe('gameover');
     expect(still.penaltyHalves).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe('grenades and difficulty', () => {
+  it('lets a missed grenade fall without a penalty and explodes a caught one', () => {
+    const session = playing();
+    session.difficulty = 'low';
+    setWolfLane(session, 'lr');
+    const missed = spawnEgg(session, 'ul', { force: true, kind: 'grenade' });
+    if (!missed) throw new Error('grenade missing');
+    missed.progress = 0.999;
+    tick(session, 1 / 60);
+    expect(missed.state).toBe('missed');
+    expect(session.penaltyHalves).toBe(0);
+    expect(session.displayScore).toBe(0);
+
+    setWolfLane(session, 'ur');
+    const caught = spawnEgg(session, 'ur', { force: true, kind: 'grenade' });
+    if (!caught) throw new Error('grenade missing');
+    caught.progress = 0.999;
+    tick(session, 1 / 60);
+    expect(caught.state).toBe('exploded');
+    expect(session.displayScore).toBe(0);
+    expect(session.penaltyHalves).toBe(2);
+    expect(session.status).toBe('playing');
+  });
+
+  it('ends the game at once when a grenade is caught on high speed', () => {
+    const session = playing();
+    session.difficulty = 'high';
+    const caught = spawnEgg(session, 'll', { force: true, kind: 'grenade' });
+    if (!caught) throw new Error('grenade missing');
+    setWolfLane(session, 'll');
+    caught.progress = 0.999;
+    tick(session, 1 / 60);
+    expect(session.status).toBe('gameover');
+    expect(session.displayScore).toBe(0);
+  });
+
+  it('keeps the chosen difficulty across a new run and speeds the eggs up', () => {
+    const session = playing();
+    cycleDifficulty(session);
+    expect(session.difficulty).toBe('medium');
+    const faster = speedFor(0, 'medium');
+    expect(faster).toBeGreaterThan(speedFor(0, 'low'));
+    expect(speedFor(40, 'low')).toBeGreaterThan(speedFor(0, 'low'));
+    startGame(session, 'B');
+    expect(session.difficulty).toBe('medium');
+    expect(speedFor(0, 'high')).toBeGreaterThan(faster);
   });
 });
 

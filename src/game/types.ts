@@ -1,9 +1,13 @@
 export type GameMode = 'A' | 'B';
 
+export type Difficulty = 'low' | 'medium' | 'high';
+
+export type FallingKind = 'egg' | 'grenade';
+
 /** Four chutes: upper/lower and left/right. */
 export type LaneId = 'ul' | 'ur' | 'll' | 'lr';
 
-export type EggState = 'moving' | 'caught' | 'missed';
+export type EggState = 'moving' | 'caught' | 'missed' | 'exploded';
 
 export type SessionStatus = 'menu' | 'playing' | 'paused' | 'gameover';
 
@@ -21,6 +25,7 @@ export interface Egg {
   animTime: number;
   /** Snapshot taken when the egg is missed. Later hare frames do not rewrite it. */
   hareWasPresent: boolean;
+  kind: FallingKind;
 }
 
 export type GameEvent =
@@ -28,7 +33,8 @@ export type GameEvent =
   | { type: 'miss'; hare: boolean }
   | { type: 'gameover' }
   | { type: 'reset-penalty' }
-  | { type: 'wrap' };
+  | { type: 'wrap' }
+  | { type: 'explode'; fatal: boolean };
 
 export interface Rect {
   x: number;

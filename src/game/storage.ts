@@ -1,15 +1,23 @@
+import type { Difficulty } from './types';
+
 const HIGH_SCORE_KEY = 'nu-pogodi-high-score';
 const SETTINGS_KEY = 'nu-pogodi-settings';
 
 export interface Settings {
   soundOn: boolean;
   hapticOn: boolean;
+  difficulty: Difficulty;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   soundOn: true,
   hapticOn: true,
+  difficulty: 'low',
 };
+
+function parseDifficulty(value: unknown): Difficulty {
+  return value === 'medium' || value === 'high' || value === 'low' ? value : 'low';
+}
 
 function getStorage(): Storage | null {
   try {
@@ -63,6 +71,7 @@ export function loadSettings(): Settings {
     return {
       soundOn: typeof record.soundOn === 'boolean' ? record.soundOn : DEFAULT_SETTINGS.soundOn,
       hapticOn: typeof record.hapticOn === 'boolean' ? record.hapticOn : DEFAULT_SETTINGS.hapticOn,
+      difficulty: parseDifficulty(record.difficulty),
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -78,6 +87,7 @@ export function saveSettings(settings: Settings): void {
       JSON.stringify({
         soundOn: settings.soundOn,
         hapticOn: settings.hapticOn,
+        difficulty: parseDifficulty(settings.difficulty),
       }),
     );
   } catch {

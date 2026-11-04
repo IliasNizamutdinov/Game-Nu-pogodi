@@ -108,6 +108,7 @@ export function render(ctx: CanvasRenderingContext2D, session: Session, ui: UiSt
   for (const egg of session.eggs) {
     if (egg.state === 'caught') drawCaughtEgg(ctx, egg);
     if (egg.state === 'missed') drawMissedEgg(ctx, egg);
+    if (egg.state === 'exploded') drawExplosion(ctx, egg);
   }
   drawCatchFloater(ctx, session);
   drawHud(ctx, session, ui);
@@ -144,7 +145,7 @@ function drawShell(ctx: CanvasRenderingContext2D): void {
   ctx.restore();
 
   for (const screw of [
-    [22, 22],
+    [86, 20],
     [LOGICAL_W - 22, 22],
     [22, LOGICAL_H - 22],
     [LOGICAL_W - 22, LOGICAL_H - 22],
@@ -167,14 +168,14 @@ function drawShell(ctx: CanvasRenderingContext2D): void {
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(48, 46, 22, 0, Math.PI * 2);
+  ctx.arc(46, 128, 18, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = '#111';
   ctx.font = 'bold 16px Verdana, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('ИМ', 48, 47);
+  ctx.fillText('ИМ', 46, 129);
   ctx.textBaseline = 'alphabetic';
 
   roundRect(ctx, 96, 16, 412, 304, 6);
@@ -343,8 +344,66 @@ function drawEggShape(
   ctx.restore();
 }
 
+function drawGrenade(ctx: CanvasRenderingContext2D, x: number, y: number, scale = 1): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#3d6b32';
+  ctx.strokeStyle = '#142014';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 7, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#6d8a48';
+  ctx.fillRect(-4, -6, 8, 4);
+  ctx.strokeRect(-4, -6, 8, 4);
+  ctx.strokeStyle = '#d7c15a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(3, -8, 3, 0, Math.PI * 1.4);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawExplosion(ctx: CanvasRenderingContext2D, egg: Egg): void {
+  const t = Math.min(1, egg.animTime / ANIM.explode);
+  const point = catchPoint(egg.lane);
+  ctx.save();
+  ctx.translate(point.x, point.y);
+  ctx.globalAlpha = 1 - t * 0.85;
+  const rings: Array<[string, number]> = [
+    ['#5a120c', 10 + t * 34],
+    ['#e23b12', 7 + t * 24],
+    ['#ffb703', 4 + t * 14],
+    ['#fff3c4', 2 + t * 6],
+  ];
+  for (const [color, radius] of rings) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = '#2a140c';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i += 1) {
+    const angle = (Math.PI * 2 * i) / 8 + t;
+    const inner = 6 + t * 8;
+    const outer = 14 + t * 26;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawMovingEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   const point = pointOnPath(egg.lane, egg.progress);
+  if (egg.kind === 'grenade') {
+    drawGrenade(ctx, point.x, point.y);
+    return;
+  }
   const roll = angleOnPath(egg.lane, egg.progress) + egg.progress * 6;
   drawEggShape(ctx, point.x, point.y, roll, 1, 1);
 }
@@ -356,6 +415,13 @@ function drawCaughtEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
 }
 
 function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
+  if (egg.kind === 'grenade') {
+    const t = Math.min(1, egg.animTime / ANIM.miss);
+    const start = catchPoint(egg.lane);
+    const y = start.y + (GROUND_Y - start.y) * Math.min(1, t / 0.45);
+    drawGrenade(ctx, start.x, y, 1 - t * 0.35);
+    return;
+  }
   const duration = egg.hareWasPresent ? ANIM.missWithChick : ANIM.miss;
   const t = Math.min(1, egg.animTime / duration);
   const start = catchPoint(egg.lane);
@@ -402,9 +468,11 @@ function drawWolf(ctx: CanvasRenderingContext2D, session: Session): void {
   const height = 102;
   const width = height * (wolfSprite.naturalWidth / wolfSprite.naturalHeight);
   ctx.save();
+  const upper = session.wolfLane === 'ul' || session.wolfLane === 'ur';
   ctx.translate(x, y + bump);
   ctx.scale(facing, 1);
-  // Basket sits near the right-middle of the artwork, which is the catch point.
+  // Positive rotation drops the basket (local +x) for the lower chutes.
+  ctx.rotate(upper ? -0.65 : 0.7);
   ctx.drawImage(wolfSprite, -width * 0.78, -height * 0.58, width, height);
   ctx.restore();
 }
@@ -490,6 +558,7 @@ function drawPenaltySlot(
 
 function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
   drawExitButton(ctx, ui.heldControl === 'exit');
+  drawDifficultyButton(ctx, session, ui.heldControl === 'difficulty');
   drawSwitch(ctx, 'sound', ui.soundOn ? 'Sound' : 'Muted', ui.soundOn, ui);
   drawSwitch(ctx, 'haptic', 'Vib', ui.hapticOn, ui);
   drawSwitch(ctx, 'gameA', 'Game A', session.status !== 'menu' && session.mode === 'A', ui);
@@ -520,6 +589,23 @@ function drawExitButton(ctx: CanvasRenderingContext2D, held: boolean): void {
   ctx.moveTo(cx + 6, cy - 6);
   ctx.lineTo(cx - 6, cy + 6);
   ctx.stroke();
+}
+
+function drawDifficultyButton(ctx: CanvasRenderingContext2D, session: Session, held: boolean): void {
+  const rect = CONTROLS.difficulty;
+  const label = session.difficulty === 'low' ? 'Low' : session.difficulty === 'medium' ? 'Mid' : 'High';
+  ctx.fillStyle = held ? '#d7e4cf' : '#e7eee4';
+  ctx.strokeStyle = '#314238';
+  ctx.lineWidth = 1.4;
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#1c241c';
+  ctx.font = 'bold 13px Verdana, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + (held ? 1 : 0));
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawSwitch(
@@ -603,6 +689,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, session: Session, ui: UiStat
       'Game A uses three chutes.',
       'Game B uses all four.',
       'Hold Game A or Game B to see the record.',
+      'Do not catch grenades.',
     ];
     lines.forEach((line, index) => ctx.fillText(line, cx, LCD.y + 108 + index * 18));
     if (ui.showRecord) {

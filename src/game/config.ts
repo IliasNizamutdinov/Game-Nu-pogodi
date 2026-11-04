@@ -56,11 +56,23 @@ export const ANIM = {
   catch: 0.38,
   miss: 0.7,
   missWithChick: 1.05,
+  explode: 0.7,
   /** Exponential follow rate for the wolf sprite. Catch logic does not wait for it. */
   wolfLerp: 16,
   catchPulse: 0.34,
   notice: 1.7,
   lay: 0.28,
+} as const;
+
+export const DIFFICULTY = {
+  low: 1,
+  medium: 1.45,
+  high: 2.05,
+} as const;
+
+export const GRENADE = {
+  /** Chance that a new object is a grenade. Missing it is safe; catching it is not. */
+  chance: { low: 0.1, medium: 0.14, high: 0.18 },
 } as const;
 
 export const INPUT = {

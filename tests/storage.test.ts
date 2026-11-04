@@ -37,10 +37,12 @@ describe('saved record', () => {
     expect(loadHighScore()).toBe(0);
     expect(parseHighScore('10.9')).toBe(10);
 
-    saveSettings({ soundOn: false, hapticOn: false });
-    expect(loadSettings()).toEqual({ soundOn: false, hapticOn: false });
+    saveSettings({ soundOn: false, hapticOn: false, difficulty: 'high' });
+    expect(loadSettings()).toEqual({ soundOn: false, hapticOn: false, difficulty: 'high' });
+    memory.set('nu-pogodi-settings', '{"soundOn":true,"hapticOn":true,"difficulty":"nope"}');
+    expect(loadSettings().difficulty).toBe('low');
     memory.set('nu-pogodi-settings', '{');
-    expect(loadSettings()).toEqual({ soundOn: true, hapticOn: true });
+    expect(loadSettings()).toEqual({ soundOn: true, hapticOn: true, difficulty: 'low' });
   });
 
   it('keeps playing when storage is unavailable', () => {

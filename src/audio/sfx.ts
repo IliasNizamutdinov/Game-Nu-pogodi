@@ -1,4 +1,4 @@
-type Tone = 'catch' | 'miss' | 'gameover' | 'reset' | 'wrap';
+type Tone = 'catch' | 'miss' | 'gameover' | 'reset' | 'wrap' | 'explode';
 
 /**
  * Short synthesized effects. No external audio files are required,
@@ -39,6 +39,9 @@ export class Sfx {
       this.beep(110, now + 0.08, 0.16, 'triangle');
     } else if (tone === 'gameover') {
       [520, 390, 280, 160].forEach((freq, index) => this.beep(freq, now + index * 0.14, 0.16, 'square'));
+    } else if (tone === 'explode') {
+      this.beep(140, now, 0.18, 'sawtooth');
+      this.beep(70, now + 0.08, 0.28, 'square');
     } else if (tone === 'reset') {
       [523, 659, 784].forEach((freq, index) => this.beep(freq, now + index * 0.07, 0.1, 'triangle'));
     } else {

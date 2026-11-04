@@ -1,10 +1,10 @@
-import { ANIM, INPUT, PENALTY, SCORE, SPAWN } from './config';
+import { ANIM, GRENADE, INPUT, PENALTY, SCORE, SPAWN } from './config';
 import { LANES, catchPoint } from './geometry';
 import { createHare, stepHare, type HareState } from './hare';
 import { activeLanes, inactiveLane } from './lanes';
 import { createRng } from './rng';
 import { spawnIntervalFor, speedFor } from './speed';
-import type { Egg, GameEvent, GameMode, LaneId, SessionStatus } from './types';
+import type { Difficulty, Egg, FallingKind, GameEvent, GameMode, LaneId, SessionStatus } from './types';
 
 export interface Notice {
   text: string;
@@ -20,6 +20,7 @@ export interface Session {
   highScore: number;
   /** Half-points. 1 = 0.5, 2 = 1, ... 6 = 3 and the run is over. */
   penaltyHalves: number;
+  difficulty: Difficulty;
   wolfLane: LaneId;
   wolfVisual: { x: number; y: number };
   eggs: Egg[];
@@ -31,6 +32,7 @@ export interface Session {
   notice: Notice | null;
   layPulse: Record<LaneId, number>;
   rng: () => number;
+  grenadeRng: () => number;
   events: GameEvent[];
 }
 
@@ -44,6 +46,7 @@ export function createSession(highScore = 0): Session {
     displayScore: 0,
     highScore: safeHigh,
     penaltyHalves: 0,
+    difficulty: 'low',
     wolfLane: 'lr',
     wolfVisual: { x: home.x, y: home.y },
     eggs: [],
@@ -55,6 +58,7 @@ export function createSession(highScore = 0): Session {
     notice: null,
     layPulse: { ul: 0, ur: 0, ll: 0, lr: 0 },
     rng: createRng(0x4e5047),
+    grenadeRng: createRng(0x6772656e),
     events: [],
   };
 }
@@ -81,8 +85,9 @@ export function startGame(session: Session, mode: GameMode): void {
   session.notice = null;
   session.layPulse = { ul: 0, ur: 0, ll: 0, lr: 0 };
   session.rng = createRng(0x4e5047);
+  session.grenadeRng = createRng(0x6772656e);
   session.events = [];
-  const interval = spawnIntervalFor(speedFor(0));
+  const interval = spawnIntervalFor(speedFor(0, session.difficulty));
   session.spawnTimer = interval - SPAWN.firstEggDelay;
 }
 
@@ -104,6 +109,15 @@ export function setWolfLane(session: Session, lane: LaneId): void {
   session.wolfLane = lane;
 }
 
+const DIFFICULTY_ORDER: Difficulty[] = ['low', 'medium', 'high'];
+
+export function cycleDifficulty(session: Session): Difficulty {
+  const index = DIFFICULTY_ORDER.indexOf(session.difficulty);
+  const next = DIFFICULTY_ORDER[(index + 1) % DIFFICULTY_ORDER.length] ?? 'low';
+  session.difficulty = next;
+  return next;
+}
+
 export function canSpawnOnLane(session: Session, lane: LaneId): boolean {
   if (session.status !== 'playing') return false;
   if (inactiveLane(session.mode, session.penaltyHalves) === lane) return false;
@@ -113,7 +127,11 @@ export function canSpawnOnLane(session: Session, lane: LaneId): boolean {
   return true;
 }
 
-export function spawnEgg(session: Session, lane: LaneId, options?: { force?: boolean }): Egg | null {
+export function spawnEgg(
+  session: Session,
+  lane: LaneId,
+  options?: { force?: boolean; kind?: FallingKind },
+): Egg | null {
   if (session.status !== 'playing') return null;
   if (!options?.force && !canSpawnOnLane(session, lane)) return null;
   const egg: Egg = {
@@ -123,6 +141,7 @@ export function spawnEgg(session: Session, lane: LaneId, options?: { force?: boo
     state: 'moving',
     animTime: 0,
     hareWasPresent: false,
+    kind: options?.kind ?? 'egg',
   };
   session.nextEggId += 1;
   session.eggs.push(egg);
@@ -138,7 +157,9 @@ export function trySpawn(session: Session): boolean {
     const lane = lanes[(start + i) % lanes.length];
     if (!lane) continue;
     if (canSpawnOnLane(session, lane)) {
-      return spawnEgg(session, lane) !== null;
+      const chance = GRENADE.chance[session.difficulty];
+      const kind: FallingKind = session.grenadeRng() < chance ? 'grenade' : 'egg';
+      return spawnEgg(session, lane, { kind }) !== null;
     }
   }
   return false;
@@ -146,6 +167,7 @@ export function trySpawn(session: Session): boolean {
 
 function animDuration(egg: Egg): number {
   if (egg.state === 'caught') return ANIM.catch;
+  if (egg.state === 'exploded') return ANIM.explode;
   if (egg.state === 'missed') return egg.hareWasPresent ? ANIM.missWithChick : ANIM.miss;
   return Number.POSITIVE_INFINITY;
 }
@@ -207,7 +229,27 @@ function endGame(session: Session): void {
  */
 function resolveEgg(session: Session, egg: Egg): void {
   if (egg.state !== 'moving' || session.status !== 'playing') return;
-  if (session.wolfLane === egg.lane) {
+  const caught = session.wolfLane === egg.lane;
+  if (egg.kind === 'grenade') {
+    egg.animTime = 0;
+    egg.hareWasPresent = false;
+    if (!caught) {
+      egg.state = 'missed';
+      return;
+    }
+    egg.state = 'exploded';
+    const fatal = session.difficulty === 'high';
+    session.events.push({ type: 'explode', fatal });
+    if (fatal) {
+      endGame(session);
+      return;
+    }
+    session.penaltyHalves = Math.min(PENALTY.gameOverHalves, session.penaltyHalves + PENALTY.halvesPerMiss);
+    session.notice = { text: 'LIFE LOST', until: session.time + ANIM.notice };
+    if (session.penaltyHalves >= PENALTY.gameOverHalves) endGame(session);
+    return;
+  }
+  if (caught) {
     egg.state = 'caught';
     egg.animTime = 0;
     egg.hareWasPresent = false;
@@ -238,7 +280,7 @@ export function tick(session: Session, dtSeconds: number): void {
   if (session.status !== 'playing') return;
 
   session.time += dt;
-  const speed = speedFor(session.internalCaught);
+  const speed = speedFor(session.internalCaught, session.difficulty);
 
   for (const egg of session.eggs) {
     if (session.status !== 'playing') break;

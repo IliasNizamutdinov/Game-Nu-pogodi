@@ -5,6 +5,7 @@ import { computeLayout, type Insets } from './game/layout';
 import { GameLoop } from './game/loop';
 import {
   createSession,
+  cycleDifficulty,
   onVisibilityChange,
   setWolfLane,
   startGame,
@@ -39,6 +40,7 @@ const ctx: CanvasRenderingContext2D = context;
 const settings: Settings = loadSettings();
 let savedHigh = loadHighScore();
 const session: Session = createSession(savedHigh);
+session.difficulty = settings.difficulty;
 const sfx = new Sfx();
 sfx.setEnabled(settings.soundOn);
 
@@ -77,6 +79,9 @@ function consumeEvents(): void {
     } else if (event.type === 'miss') {
       sfx.play('miss');
       vibrate(280, settings.hapticOn);
+    } else if (event.type === 'explode') {
+      sfx.play('explode');
+      vibrate(420, settings.hapticOn);
     } else if (event.type === 'gameover') {
       sfx.play('gameover');
       vibrate([28, 36, 28, 36, 50], settings.hapticOn);
@@ -178,6 +183,12 @@ function toggleSound(): void {
   paint();
 }
 
+function cycleSpeed(): void {
+  settings.difficulty = cycleDifficulty(session);
+  saveSettings(settings);
+  paint();
+}
+
 function toggleHaptic(): void {
   settings.hapticOn = !settings.hapticOn;
   saveSettings(settings);
@@ -219,6 +230,11 @@ canvas.addEventListener('pointerdown', (event) => {
   if (id === 'sound') {
     ui.heldControl = id;
     toggleSound();
+    return;
+  }
+  if (id === 'difficulty') {
+    ui.heldControl = id;
+    cycleSpeed();
     return;
   }
   if (id === 'haptic') {

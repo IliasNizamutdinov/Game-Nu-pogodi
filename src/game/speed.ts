@@ -1,4 +1,5 @@
-import { SPAWN, SPEED } from './config';
+import { DIFFICULTY, SPAWN, SPEED } from './config';
+import type { Difficulty } from './types';
 
 /**
  * Speed is a pure function of the internal catch count.
@@ -7,7 +8,7 @@ import { SPAWN, SPEED } from './config';
  * and does not restart. A 999 → 0 rollover (internal count % 1000 === 0 and
  * the count is above 0) applies perCycle instead of clearing the bonus.
  */
-export function speedFor(internalCaught: number): number {
+export function speedFor(internalCaught: number, difficulty: Difficulty = 'low'): number {
   const caught = Math.max(0, Math.floor(internalCaught));
   const cycle = Math.floor(caught / 1000);
   const within = caught % 1000;
@@ -18,7 +19,8 @@ export function speedFor(internalCaught: number): number {
     cycle * SPEED.perCycle +
     hundreds * SPEED.perHundred +
     points * SPEED.perPoint;
-  return Math.min(SPEED.max, raw);
+  const factor = DIFFICULTY[difficulty];
+  return Math.min(SPEED.max * factor, raw * factor);
 }
 
 /** Shorter gaps as eggs get faster, never faster than the configured floor. */
