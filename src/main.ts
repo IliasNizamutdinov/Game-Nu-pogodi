@@ -5,7 +5,6 @@ import { computeLayout, type Insets } from './game/layout';
 import { GameLoop } from './game/loop';
 import {
   createSession,
-  cycleDifficulty,
   onVisibilityChange,
   setWolfLane,
   startGame,
@@ -183,8 +182,9 @@ function toggleSound(): void {
   paint();
 }
 
-function cycleSpeed(): void {
-  settings.difficulty = cycleDifficulty(session);
+function chooseDifficulty(level: 'low' | 'medium' | 'high'): void {
+  session.difficulty = level;
+  settings.difficulty = level;
   saveSettings(settings);
   paint();
 }
@@ -232,9 +232,9 @@ canvas.addEventListener('pointerdown', (event) => {
     toggleSound();
     return;
   }
-  if (id === 'difficulty') {
+  if (id === 'speedLow' || id === 'speedMid' || id === 'speedHigh') {
     ui.heldControl = id;
-    cycleSpeed();
+    chooseDifficulty(id === 'speedLow' ? 'low' : id === 'speedMid' ? 'medium' : 'high');
     return;
   }
   if (id === 'haptic') {

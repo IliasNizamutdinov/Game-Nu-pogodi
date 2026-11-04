@@ -1,5 +1,6 @@
 import henUrl from '../assets/hen.png';
-import wolfUrl from '../assets/wolf.png';
+import wolfLowerUrl from '../assets/wolf-lower.png';
+import wolfUpperUrl from '../assets/wolf-upper.png';
 import { ANIM } from '../game/config';
 import {
   CHICKENS,
@@ -39,7 +40,8 @@ function loadSprite(url: string): HTMLImageElement {
   return image;
 }
 
-const wolfSprite = loadSprite(wolfUrl);
+const wolfUpperSprite = loadSprite(wolfUpperUrl);
+const wolfLowerSprite = loadSprite(wolfLowerUrl);
 const henSprite = loadSprite(henUrl);
 
 function spriteReady(image: HTMLImageElement): boolean {
@@ -145,7 +147,7 @@ function drawShell(ctx: CanvasRenderingContext2D): void {
   ctx.restore();
 
   for (const screw of [
-    [86, 20],
+    [130, 28],
     [LOGICAL_W - 22, 22],
     [22, LOGICAL_H - 22],
     [LOGICAL_W - 22, LOGICAL_H - 22],
@@ -168,14 +170,14 @@ function drawShell(ctx: CanvasRenderingContext2D): void {
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(46, 128, 18, 0, Math.PI * 2);
+  ctx.arc(80, 29, 14, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = '#111';
-  ctx.font = 'bold 16px Verdana, sans-serif';
+  ctx.font = 'bold 13px Verdana, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('ИМ', 46, 129);
+  ctx.fillText('ИМ', 80, 30);
   ctx.textBaseline = 'alphabetic';
 
   roundRect(ctx, 96, 16, 412, 304, 6);
@@ -461,19 +463,20 @@ function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
 }
 
 function drawWolf(ctx: CanvasRenderingContext2D, session: Session): void {
-  if (!spriteReady(wolfSprite)) return;
+  const upper = session.wolfLane === 'ul' || session.wolfLane === 'ur';
+  const sprite = upper ? wolfUpperSprite : wolfLowerSprite;
+  if (!spriteReady(sprite)) return;
   const facing = session.wolfLane === 'ul' || session.wolfLane === 'll' ? -1 : 1;
   const { x, y } = session.wolfVisual;
   const bump = Math.sin(Math.min(1, session.catchPulse / ANIM.catchPulse) * Math.PI) * 2;
-  const height = 102;
-  const width = height * (wolfSprite.naturalWidth / wolfSprite.naturalHeight);
+  const height = upper ? 96 : 100;
+  const width = height * (sprite.naturalWidth / sprite.naturalHeight);
+  const basketX = upper ? 0.7 : 0.74;
+  const basketY = upper ? 0.6 : 0.5;
   ctx.save();
-  const upper = session.wolfLane === 'ul' || session.wolfLane === 'ur';
   ctx.translate(x, y + bump);
   ctx.scale(facing, 1);
-  // Positive rotation drops the basket (local +x) for the lower chutes.
-  ctx.rotate(upper ? -0.65 : 0.7);
-  ctx.drawImage(wolfSprite, -width * 0.78, -height * 0.58, width, height);
+  ctx.drawImage(sprite, -width * basketX, -height * basketY, width, height);
   ctx.restore();
 }
 
@@ -558,7 +561,7 @@ function drawPenaltySlot(
 
 function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
   drawExitButton(ctx, ui.heldControl === 'exit');
-  drawDifficultyButton(ctx, session, ui.heldControl === 'difficulty');
+  drawSpeedSwitch(ctx, session, ui.heldControl);
   drawSwitch(ctx, 'sound', ui.soundOn ? 'Sound' : 'Muted', ui.soundOn, ui);
   drawSwitch(ctx, 'haptic', 'Vib', ui.hapticOn, ui);
   drawSwitch(ctx, 'gameA', 'Game A', session.status !== 'menu' && session.mode === 'A', ui);
@@ -591,20 +594,44 @@ function drawExitButton(ctx: CanvasRenderingContext2D, held: boolean): void {
   ctx.stroke();
 }
 
-function drawDifficultyButton(ctx: CanvasRenderingContext2D, session: Session, held: boolean): void {
-  const rect = CONTROLS.difficulty;
-  const label = session.difficulty === 'low' ? 'Low' : session.difficulty === 'medium' ? 'Mid' : 'High';
-  ctx.fillStyle = held ? '#d7e4cf' : '#e7eee4';
+function drawSpeedSwitch(ctx: CanvasRenderingContext2D, session: Session, held: ControlId | null): void {
+  const levels: Array<{
+    id: 'speedLow' | 'speedMid' | 'speedHigh';
+    label: string;
+    difficulty: Session['difficulty'];
+    fill: string;
+    idle: string;
+  }> = [
+    { id: 'speedLow', label: 'Low', difficulty: 'low', fill: '#2f9d4f', idle: '#e5f3e8' },
+    { id: 'speedMid', label: 'Mid', difficulty: 'medium', fill: '#2d6fe8', idle: '#e4edfb' },
+    { id: 'speedHigh', label: 'High', difficulty: 'high', fill: '#d6453d', idle: '#fbeceb' },
+  ];
+  const top = CONTROLS.speedLow.y - 4;
+  const bottom = CONTROLS.speedHigh.y + CONTROLS.speedHigh.h + 4;
+  ctx.fillStyle = '#f4f7f4';
   ctx.strokeStyle = '#314238';
-  ctx.lineWidth = 1.4;
-  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, 4, top, 88, bottom - top, 14);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#1c241c';
-  ctx.font = 'bold 13px Verdana, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + (held ? 1 : 0));
+  for (const level of levels) {
+    const rect = CONTROLS[level.id];
+    const selected = session.difficulty === level.difficulty;
+    const pressed = held === level.id;
+    ctx.fillStyle = selected ? level.fill : level.idle;
+    roundRect(ctx, rect.x, rect.y + (pressed ? 1 : 0), rect.w, rect.h - 2, 10);
+    ctx.fill();
+    if (selected) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.fillStyle = selected ? '#fff' : level.fill;
+    ctx.font = 'bold 13px Verdana, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(level.label, rect.x + rect.w / 2, rect.y + rect.h / 2 + (pressed ? 1 : 0));
+  }
   ctx.textBaseline = 'alphabetic';
 }
 
