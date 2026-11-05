@@ -112,6 +112,7 @@ describe('misses and the hare', () => {
       animTime: 0,
       hareWasPresent: false,
       kind: 'egg',
+      bonus: null,
     });
     advance(session, 3);
     expect(session.status).toBe('gameover');
@@ -293,6 +294,7 @@ describe('modes, pause and the frame cap', () => {
       animTime: 0,
       hareWasPresent: false,
       kind: 'egg',
+      bonus: null,
     });
     const timer = session.hare.timer;
     advance(session, 2);
@@ -393,6 +395,37 @@ describe('grenades and difficulty', () => {
     startGame(session, 'B');
     expect(session.difficulty).toBe('medium');
     expect(speedFor(0, 'high')).toBeGreaterThan(faster);
+  });
+});
+
+describe('colored eggs', () => {
+  it('awards ten points and rolls faster than a plain egg', () => {
+    const session = playing();
+    const plain = spawnEgg(session, 'ul', { force: true });
+    const colored = spawnEgg(session, 'ur', { force: true, bonus: 'red' });
+    if (!plain || !colored) throw new Error('egg missing');
+    plain.progress = 0.2;
+    colored.progress = 0.2;
+    session.spawnTimer = -1e9;
+    tick(session, 1 / 60);
+    expect(colored.progress - 0.2).toBeGreaterThan(plain.progress - 0.2);
+    setWolfLane(session, 'ur');
+    colored.progress = 0.999;
+    tick(session, 1 / 60);
+    expect(session.displayScore).toBe(10);
+    expect(colored.state).toBe('caught');
+  });
+
+  it('turns one ordinary egg in every five to seven into a colored egg', () => {
+    const session = playing();
+    session.grenadeRng = () => 0.99;
+    session.eggsUntilBonus = 1;
+    expect(trySpawn(session)).toBe(true);
+    const spawned = session.eggs[session.eggs.length - 1];
+    expect(spawned?.kind).toBe('egg');
+    expect(spawned?.bonus).not.toBeNull();
+    expect(session.eggsUntilBonus).toBeGreaterThanOrEqual(5);
+    expect(session.eggsUntilBonus).toBeLessThanOrEqual(7);
   });
 });
 

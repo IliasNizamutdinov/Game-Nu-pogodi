@@ -70,6 +70,16 @@ export const DIFFICULTY = {
   high: 2.05,
 } as const;
 
+export const BONUS = {
+  /** A colored egg appears once per this many ordinary eggs, inclusive. */
+  minInterval: 5,
+  maxInterval: 7,
+  /** Multiplier on the current egg speed. Colored eggs are the fastest objects. */
+  speedFactor: 1.85,
+  points: 10,
+  colors: ['red', 'blue', 'green'] as const,
+} as const;
+
 export const GRENADE = {
   /** Chance that a new object is a grenade. Missing it is safe; catching it is not. */
   chance: { low: 0.1, medium: 0.14, high: 0.18 },

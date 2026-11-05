@@ -30,6 +30,7 @@ export interface UiState {
   heldControl: ControlId | null;
   /** Wall-clock blink so a half-point chick stays readable while the game is paused. */
   blinkOn: boolean;
+  showCopyright: boolean;
 }
 
 const INK = '#1b2b22';
@@ -116,6 +117,7 @@ export function render(ctx: CanvasRenderingContext2D, session: Session, ui: UiSt
   drawHud(ctx, session, ui);
   drawControls(ctx, session, ui);
   drawOverlay(ctx, session, ui);
+  if (ui.showCopyright) drawCopyrightPanel(ctx);
 }
 
 function drawShell(ctx: CanvasRenderingContext2D): void {
@@ -165,20 +167,6 @@ function drawShell(ctx: CanvasRenderingContext2D): void {
     ctx.lineTo(sx + 3, sy);
     ctx.stroke();
   }
-
-  ctx.fillStyle = '#f7f8f8';
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(80, 29, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#111';
-  ctx.font = 'bold 13px Verdana, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('ИМ', 80, 30);
-  ctx.textBaseline = 'alphabetic';
 
   roundRect(ctx, 96, 16, 412, 304, 6);
   ctx.fillStyle = '#f4f7f8';
@@ -323,6 +311,12 @@ function drawHouse(ctx: CanvasRenderingContext2D, session: Session): void {
   ctx.fill();
 }
 
+const BONUS_FILL: Record<'red' | 'blue' | 'green', string> = {
+  red: '#e23b3b',
+  blue: '#2d6fe8',
+  green: '#2f9d4f',
+};
+
 function drawEggShape(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -330,19 +324,24 @@ function drawEggShape(
   rotation: number,
   scale: number,
   alpha = 1,
+  bonus: 'red' | 'blue' | 'green' | null = null,
 ): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rotation);
   ctx.scale(scale, scale);
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#fffaf0';
-  ctx.strokeStyle = '#8a7048';
-  ctx.lineWidth = 1.2;
+  ctx.fillStyle = bonus ? BONUS_FILL[bonus] : '#fffaf0';
+  ctx.strokeStyle = bonus ? '#1c140c' : '#8a7048';
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.ellipse(0, 0, EGG_RADIUS * 0.85, EGG_RADIUS * 1.15, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, EGG_RADIUS * 0.9, EGG_RADIUS * 1.2, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(-3, -3, 2.2, 3.2, -0.4, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -407,13 +406,13 @@ function drawMovingEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
     return;
   }
   const roll = angleOnPath(egg.lane, egg.progress) + egg.progress * 6;
-  drawEggShape(ctx, point.x, point.y, roll, 1, 1);
+  drawEggShape(ctx, point.x, point.y, roll, egg.bonus ? 1.15 : 1, 1, egg.bonus);
 }
 
 function drawCaughtEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   const t = Math.min(1, egg.animTime / ANIM.catch);
   const point = catchPoint(egg.lane);
-  drawEggShape(ctx, point.x, point.y - t * 8, 0, 1 - t * 0.8, 1 - t * 0.2);
+  drawEggShape(ctx, point.x, point.y - t * 8, 0, (egg.bonus ? 1.15 : 1) - t * 0.8, 1 - t * 0.2, egg.bonus);
 }
 
 function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
@@ -431,7 +430,7 @@ function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   if (t < fall) {
     const k = t / fall;
     const y = start.y + (GROUND_Y - start.y) * k * k;
-    drawEggShape(ctx, start.x, y, k, 1, 1);
+    drawEggShape(ctx, start.x, y, k, egg.bonus ? 1.15 : 1, 1, egg.bonus);
     return;
   }
   const phase = (t - fall) / (1 - fall);
@@ -488,7 +487,7 @@ function drawCatchFloater(ctx: CanvasRenderingContext2D, session: Session): void
   ctx.fillStyle = INK;
   ctx.font = 'bold 12px Verdana, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('+1', session.wolfVisual.x, session.wolfVisual.y - 48);
+  ctx.fillText(`+${session.lastCatchPoints}`, session.wolfVisual.x, session.wolfVisual.y - 48);
   ctx.restore();
 }
 
@@ -561,6 +560,7 @@ function drawPenaltySlot(
 
 function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
   drawExitButton(ctx, ui.heldControl === 'exit');
+  drawCopyrightButton(ctx, ui.heldControl === 'copyright', ui.showCopyright);
   drawSpeedSwitch(ctx, session, ui.heldControl);
   drawSwitch(ctx, 'sound', ui.soundOn ? 'Sound' : 'Muted', ui.soundOn, ui);
   drawSwitch(ctx, 'haptic', 'Vib', ui.hapticOn, ui);
@@ -594,6 +594,58 @@ function drawExitButton(ctx: CanvasRenderingContext2D, held: boolean): void {
   ctx.stroke();
 }
 
+function drawCopyrightButton(ctx: CanvasRenderingContext2D, held: boolean, open: boolean): void {
+  const rect = CONTROLS.copyright;
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2 + (held ? 1 : 0);
+  ctx.fillStyle = open ? '#fff4d2' : '#f7f8f8';
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 16px Verdana, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('©', cx, cy + 1);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawCopyrightPanel(ctx: CanvasRenderingContext2D): void {
+  roundRect(ctx, 150, 78, 300, 168, 12);
+  ctx.fillStyle = '#178a34';
+  ctx.fill();
+  ctx.strokeStyle = '#0c4e1e';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  roundRect(ctx, 158, 86, 284, 152, 8);
+  const metal = ctx.createLinearGradient(158, 86, 158, 238);
+  metal.addColorStop(0, '#f4f6f8');
+  metal.addColorStop(1, '#c5ced6');
+  ctx.fillStyle = metal;
+  ctx.fill();
+  roundRect(ctx, 170, 108, 260, 112, 6);
+  ctx.fillStyle = '#f7f4ea';
+  ctx.fill();
+  ctx.strokeStyle = '#9aa3aa';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#8d1d16';
+  ctx.font = 'bold 14px Verdana, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('©', 300, 102);
+  ctx.fillStyle = '#1c241c';
+  ctx.font = 'bold 13px Verdana, sans-serif';
+  ctx.fillText('Низамутдинов Ильяс', 300, 132);
+  ctx.font = '12px Verdana, sans-serif';
+  ctx.fillText('лицензия MIT', 300, 152);
+  ctx.fillText('По вопросам сотрудничества:', 300, 176);
+  ctx.font = 'bold 12px Verdana, sans-serif';
+  ctx.fillText('signum2009@mail.ru', 300, 196);
+}
+
 function drawSpeedSwitch(ctx: CanvasRenderingContext2D, session: Session, held: ControlId | null): void {
   const levels: Array<{
     id: 'speedLow' | 'speedMid' | 'speedHigh';
@@ -606,7 +658,7 @@ function drawSpeedSwitch(ctx: CanvasRenderingContext2D, session: Session, held: 
     { id: 'speedMid', label: 'Mid', difficulty: 'medium', fill: '#2d6fe8', idle: '#e4edfb' },
     { id: 'speedHigh', label: 'High', difficulty: 'high', fill: '#d6453d', idle: '#fbeceb' },
   ];
-  const top = CONTROLS.speedLow.y - 4;
+  const top = CONTROLS.speedLow.y - 16;
   const bottom = CONTROLS.speedHigh.y + CONTROLS.speedHigh.h + 4;
   ctx.fillStyle = '#f4f7f4';
   ctx.strokeStyle = '#314238';
@@ -614,6 +666,11 @@ function drawSpeedSwitch(ctx: CanvasRenderingContext2D, session: Session, held: 
   roundRect(ctx, 4, top, 88, bottom - top, 14);
   ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = '#314238';
+  ctx.font = 'bold 9px Verdana, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Сложность', 48, top + 9);
   for (const level of levels) {
     const rect = CONTROLS[level.id];
     const selected = session.difficulty === level.difficulty;

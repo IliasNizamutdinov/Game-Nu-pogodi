@@ -4,6 +4,8 @@ export type Difficulty = 'low' | 'medium' | 'high';
 
 export type FallingKind = 'egg' | 'grenade';
 
+export type BonusColor = 'red' | 'blue' | 'green';
+
 /** Four chutes: upper/lower and left/right. */
 export type LaneId = 'ul' | 'ur' | 'll' | 'lr';
 
@@ -26,6 +28,8 @@ export interface Egg {
   /** Snapshot taken when the egg is missed. Later hare frames do not rewrite it. */
   hareWasPresent: boolean;
   kind: FallingKind;
+  /** A colored egg. Null for plain eggs and grenades. */
+  bonus: BonusColor | null;
 }
 
 export type GameEvent =

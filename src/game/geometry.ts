@@ -80,9 +80,10 @@ export const HUD: Rect = { x: 230, y: 54, w: 92, h: 28 };
 
 export const CONTROLS = {
   exit: { x: 8, y: 8, w: 52, h: 42 },
-  speedLow: { x: 8, y: 64, w: 80, h: 42 },
-  speedMid: { x: 8, y: 110, w: 80, h: 42 },
-  speedHigh: { x: 8, y: 156, w: 80, h: 42 },
+  copyright: { x: 64, y: 8, w: 48, h: 42 },
+  speedLow: { x: 8, y: 78, w: 80, h: 36 },
+  speedMid: { x: 8, y: 118, w: 80, h: 36 },
+  speedHigh: { x: 8, y: 158, w: 80, h: 36 },
   sound: { x: 516, y: 50, w: 62, h: 36 },
   haptic: { x: 582, y: 50, w: 52, h: 36 },
   gameA: { x: 516, y: 90, w: 118, h: 36 },

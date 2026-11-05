@@ -49,6 +49,7 @@ const ui: UiState = {
   hapticOn: settings.hapticOn,
   heldControl: null,
   blinkOn: true,
+  showCopyright: false,
 };
 
 interface Press {
@@ -240,6 +241,12 @@ canvas.addEventListener('pointerdown', (event) => {
   if (id === 'haptic') {
     ui.heldControl = id;
     toggleHaptic();
+    return;
+  }
+  if (id === 'copyright') {
+    ui.heldControl = id;
+    ui.showCopyright = !ui.showCopyright;
+    paint();
     return;
   }
   if (id === 'exit') {
