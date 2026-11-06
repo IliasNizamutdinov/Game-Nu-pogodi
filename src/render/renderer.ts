@@ -1,7 +1,7 @@
 import henUrl from '../assets/hen.png';
 import wolfLowerUrl from '../assets/wolf-lower.png';
 import wolfUpperUrl from '../assets/wolf-upper.png';
-import { ANIM } from '../game/config';
+import { ANIM, BLACK } from '../game/config';
 import {
   CHICKENS,
   CONTROLS,
@@ -30,7 +30,7 @@ export interface UiState {
   heldControl: ControlId | null;
   /** Wall-clock blink so a half-point chick stays readable while the game is paused. */
   blinkOn: boolean;
-  showCopyright: boolean;
+  showInfo: boolean;
 }
 
 const INK = '#1b2b22';
@@ -117,7 +117,7 @@ export function render(ctx: CanvasRenderingContext2D, session: Session, ui: UiSt
   drawHud(ctx, session, ui);
   drawControls(ctx, session, ui);
   drawOverlay(ctx, session, ui);
-  if (ui.showCopyright) drawCopyrightPanel(ctx);
+  if (ui.showInfo) drawInfoPanel(ctx);
 }
 
 function drawShell(ctx: CanvasRenderingContext2D): void {
@@ -311,11 +311,20 @@ function drawHouse(ctx: CanvasRenderingContext2D, session: Session): void {
   ctx.fill();
 }
 
-const BONUS_FILL: Record<'red' | 'blue' | 'green', string> = {
+const BONUS_FILL: Record<'red' | 'blue' | 'green' | 'gold' | 'black', string> = {
   red: '#e23b3b',
   blue: '#2d6fe8',
   green: '#2f9d4f',
+  gold: '#f2c14e',
+  black: '#1a1a1a',
 };
+
+function eggScale(bonus: 'red' | 'blue' | 'green' | 'gold' | 'black' | null): number {
+  if (bonus === 'black') return BLACK.scale;
+  if (bonus === 'red' || bonus === 'blue' || bonus === 'green') return 1.15;
+  if (bonus === 'gold') return 1.08;
+  return 1;
+}
 
 function drawEggShape(
   ctx: CanvasRenderingContext2D,
@@ -324,7 +333,7 @@ function drawEggShape(
   rotation: number,
   scale: number,
   alpha = 1,
-  bonus: 'red' | 'blue' | 'green' | null = null,
+  bonus: 'red' | 'blue' | 'green' | 'gold' | 'black' | null = null,
 ): void {
   ctx.save();
   ctx.translate(x, y);
@@ -332,13 +341,13 @@ function drawEggShape(
   ctx.scale(scale, scale);
   ctx.globalAlpha = alpha;
   ctx.fillStyle = bonus ? BONUS_FILL[bonus] : '#fffaf0';
-  ctx.strokeStyle = bonus ? '#1c140c' : '#8a7048';
-  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = bonus === 'gold' ? '#8a5a10' : bonus ? '#111' : '#8a7048';
+  ctx.lineWidth = bonus === 'black' ? 1.8 : 1.4;
   ctx.beginPath();
   ctx.ellipse(0, 0, EGG_RADIUS * 0.9, EGG_RADIUS * 1.2, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillStyle = bonus === 'black' ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.55)';
   ctx.beginPath();
   ctx.ellipse(-3, -3, 2.2, 3.2, -0.4, 0, Math.PI * 2);
   ctx.fill();
@@ -406,13 +415,13 @@ function drawMovingEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
     return;
   }
   const roll = angleOnPath(egg.lane, egg.progress) + egg.progress * 6;
-  drawEggShape(ctx, point.x, point.y, roll, egg.bonus ? 1.15 : 1, 1, egg.bonus);
+  drawEggShape(ctx, point.x, point.y, roll, eggScale(egg.bonus), 1, egg.bonus);
 }
 
 function drawCaughtEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   const t = Math.min(1, egg.animTime / ANIM.catch);
   const point = catchPoint(egg.lane);
-  drawEggShape(ctx, point.x, point.y - t * 8, 0, (egg.bonus ? 1.15 : 1) - t * 0.8, 1 - t * 0.2, egg.bonus);
+  drawEggShape(ctx, point.x, point.y - t * 8, 0, eggScale(egg.bonus) - t * 0.8, 1 - t * 0.2, egg.bonus);
 }
 
 function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
@@ -430,7 +439,7 @@ function drawMissedEgg(ctx: CanvasRenderingContext2D, egg: Egg): void {
   if (t < fall) {
     const k = t / fall;
     const y = start.y + (GROUND_Y - start.y) * k * k;
-    drawEggShape(ctx, start.x, y, k, egg.bonus ? 1.15 : 1, 1, egg.bonus);
+    drawEggShape(ctx, start.x, y, k, eggScale(egg.bonus), 1, egg.bonus);
     return;
   }
   const phase = (t - fall) / (1 - fall);
@@ -487,7 +496,7 @@ function drawCatchFloater(ctx: CanvasRenderingContext2D, session: Session): void
   ctx.fillStyle = INK;
   ctx.font = 'bold 12px Verdana, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`+${session.lastCatchPoints}`, session.wolfVisual.x, session.wolfVisual.y - 48);
+  ctx.fillText(session.lastCatchLabel, session.wolfVisual.x, session.wolfVisual.y - 48);
   ctx.restore();
 }
 
@@ -560,7 +569,7 @@ function drawPenaltySlot(
 
 function drawControls(ctx: CanvasRenderingContext2D, session: Session, ui: UiState): void {
   drawExitButton(ctx, ui.heldControl === 'exit');
-  drawCopyrightButton(ctx, ui.heldControl === 'copyright', ui.showCopyright);
+  drawInfoButton(ctx, ui.heldControl === 'info', ui.showInfo);
   drawSpeedSwitch(ctx, session, ui.heldControl);
   drawSwitch(ctx, 'sound', ui.soundOn ? 'Sound' : 'Muted', ui.soundOn, ui);
   drawSwitch(ctx, 'haptic', 'Vib', ui.hapticOn, ui);
@@ -594,56 +603,69 @@ function drawExitButton(ctx: CanvasRenderingContext2D, held: boolean): void {
   ctx.stroke();
 }
 
-function drawCopyrightButton(ctx: CanvasRenderingContext2D, held: boolean, open: boolean): void {
-  const rect = CONTROLS.copyright;
+function drawInfoButton(ctx: CanvasRenderingContext2D, held: boolean, open: boolean): void {
+  const rect = CONTROLS.info;
   const cx = rect.x + rect.w / 2;
   const cy = rect.y + rect.h / 2 + (held ? 1 : 0);
   ctx.fillStyle = open ? '#fff4d2' : '#f7f8f8';
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 12, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = '#111';
-  ctx.font = 'bold 16px Verdana, sans-serif';
+  ctx.font = 'italic bold 16px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('©', cx, cy + 1);
+  ctx.fillText('i', cx, cy + 1);
   ctx.textBaseline = 'alphabetic';
 }
 
-function drawCopyrightPanel(ctx: CanvasRenderingContext2D): void {
-  roundRect(ctx, 150, 78, 300, 168, 12);
+function drawInfoPanel(ctx: CanvasRenderingContext2D): void {
+  roundRect(ctx, 132, 56, 340, 228, 12);
   ctx.fillStyle = '#178a34';
   ctx.fill();
   ctx.strokeStyle = '#0c4e1e';
   ctx.lineWidth = 3;
   ctx.stroke();
-  roundRect(ctx, 158, 86, 284, 152, 8);
-  const metal = ctx.createLinearGradient(158, 86, 158, 238);
+  roundRect(ctx, 140, 64, 324, 212, 8);
+  const metal = ctx.createLinearGradient(140, 64, 140, 276);
   metal.addColorStop(0, '#f4f6f8');
   metal.addColorStop(1, '#c5ced6');
   ctx.fillStyle = metal;
   ctx.fill();
-  roundRect(ctx, 170, 108, 260, 112, 6);
+  roundRect(ctx, 152, 86, 300, 176, 6);
   ctx.fillStyle = '#f7f4ea';
   ctx.fill();
   ctx.strokeStyle = '#9aa3aa';
   ctx.lineWidth = 1.5;
   ctx.stroke();
-  ctx.fillStyle = '#8d1d16';
-  ctx.font = 'bold 14px Verdana, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('©', 300, 102);
-  ctx.fillStyle = '#1c241c';
+  ctx.fillStyle = '#8d1d16';
   ctx.font = 'bold 13px Verdana, sans-serif';
-  ctx.fillText('Низамутдинов Ильяс', 300, 132);
+  ctx.fillText('INFO', 302, 80);
+  const rules = [
+    'Plain egg — 1 point',
+    'Colored egg — 5 points',
+    'Golden egg — 10 points',
+    'Grenade — −1 life',
+    'Black egg — score halved',
+  ];
+  ctx.fillStyle = '#1c241c';
   ctx.font = '12px Verdana, sans-serif';
-  ctx.fillText('лицензия MIT', 300, 152);
-  ctx.fillText('По вопросам сотрудничества:', 300, 176);
+  rules.forEach((line, index) => ctx.fillText(line, 302, 106 + index * 16));
+  ctx.strokeStyle = '#c5bba8';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(176, 190);
+  ctx.lineTo(428, 190);
+  ctx.stroke();
   ctx.font = 'bold 12px Verdana, sans-serif';
-  ctx.fillText('signum2009@mail.ru', 300, 196);
+  ctx.fillText('Ilyas Nizamutdinov', 302, 208);
+  ctx.font = '11px Verdana, sans-serif';
+  ctx.fillText('MIT License', 302, 224);
+  ctx.fillText('Cooperation: signum2009@mail.ru', 302, 242);
 }
 
 function drawSpeedSwitch(ctx: CanvasRenderingContext2D, session: Session, held: ControlId | null): void {
@@ -670,7 +692,7 @@ function drawSpeedSwitch(ctx: CanvasRenderingContext2D, session: Session, held: 
   ctx.font = 'bold 9px Verdana, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Сложность', 48, top + 9);
+  ctx.fillText('Level', 48, top + 9);
   for (const level of levels) {
     const rect = CONTROLS[level.id];
     const selected = session.difficulty === level.difficulty;

@@ -398,22 +398,26 @@ describe('grenades and difficulty', () => {
   });
 });
 
-describe('colored eggs', () => {
-  it('awards ten points and rolls faster than a plain egg', () => {
+describe('special eggs', () => {
+  it('awards five points for a colored egg and rolls it faster than a plain egg', () => {
     const session = playing();
     const plain = spawnEgg(session, 'ul', { force: true });
     const colored = spawnEgg(session, 'ur', { force: true, bonus: 'red' });
-    if (!plain || !colored) throw new Error('egg missing');
+    const gold = spawnEgg(session, 'll', { force: true, bonus: 'gold' });
+    if (!plain || !colored || !gold) throw new Error('egg missing');
     plain.progress = 0.2;
     colored.progress = 0.2;
+    gold.progress = 0.2;
     session.spawnTimer = -1e9;
     tick(session, 1 / 60);
     expect(colored.progress - 0.2).toBeGreaterThan(plain.progress - 0.2);
+    expect(gold.progress).toBeCloseTo(plain.progress, 5);
     setWolfLane(session, 'ur');
     colored.progress = 0.999;
     tick(session, 1 / 60);
-    expect(session.displayScore).toBe(10);
+    expect(session.displayScore).toBe(5);
     expect(colored.state).toBe('caught');
+    expect(session.lastCatchLabel).toBe('+5');
   });
 
   it('turns one ordinary egg in every five to seven into a colored egg', () => {
@@ -423,9 +427,57 @@ describe('colored eggs', () => {
     expect(trySpawn(session)).toBe(true);
     const spawned = session.eggs[session.eggs.length - 1];
     expect(spawned?.kind).toBe('egg');
-    expect(spawned?.bonus).not.toBeNull();
+    expect(spawned?.bonus === 'red' || spawned?.bonus === 'blue' || spawned?.bonus === 'green').toBe(true);
     expect(session.eggsUntilBonus).toBeGreaterThanOrEqual(5);
     expect(session.eggsUntilBonus).toBeLessThanOrEqual(7);
+  });
+
+  it('turns every tenth plain egg into a golden egg worth ten points', () => {
+    const session = playing();
+    session.grenadeRng = () => 0.99;
+    session.eggsUntilBonus = 20;
+    session.eggsUntilBlack = 20;
+    session.eggsUntilGold = 1;
+    expect(trySpawn(session)).toBe(true);
+    const spawned = session.eggs[session.eggs.length - 1];
+    expect(spawned?.bonus).toBe('gold');
+    expect(session.eggsUntilGold).toBe(10);
+    if (!spawned) throw new Error('gold missing');
+    setWolfLane(session, spawned.lane);
+    spawned.progress = 0.999;
+    tick(session, 1 / 60);
+    expect(session.displayScore).toBe(10);
+    expect(session.lastCatchLabel).toBe('+10');
+  });
+
+  it('halves the current score when the black egg is caught and leaves penalties', () => {
+    const session = playing();
+    session.internalCaught = 21;
+    session.displayScore = 21;
+    session.highScore = 40;
+    session.penaltyHalves = 2;
+    const black = spawnEgg(session, 'ul', { force: true, bonus: 'black' });
+    if (!black) throw new Error('black missing');
+    setWolfLane(session, 'ul');
+    black.progress = 0.999;
+    tick(session, 1 / 60);
+    expect(black.state).toBe('caught');
+    expect(session.displayScore).toBe(10);
+    expect(session.internalCaught).toBe(10);
+    expect(session.penaltyHalves).toBe(2);
+    expect(session.highScore).toBe(40);
+    expect(session.lastCatchLabel).toBe('1/2');
+  });
+
+  it('schedules a black egg without counting grenades or colored eggs', () => {
+    const session = playing();
+    session.grenadeRng = () => 0.99;
+    session.eggsUntilBonus = 20;
+    session.eggsUntilGold = 20;
+    session.eggsUntilBlack = 1;
+    expect(trySpawn(session)).toBe(true);
+    expect(session.eggs[session.eggs.length - 1]?.bonus).toBe('black');
+    expect(session.eggsUntilBlack).toBe(12);
   });
 });
 

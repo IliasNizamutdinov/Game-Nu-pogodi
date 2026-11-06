@@ -79,8 +79,8 @@ export const HARE_WINDOW: Rect = { x: 128, y: 66, w: 28, h: 22 };
 export const HUD: Rect = { x: 230, y: 54, w: 92, h: 28 };
 
 export const CONTROLS = {
-  exit: { x: 8, y: 8, w: 52, h: 42 },
-  copyright: { x: 64, y: 8, w: 48, h: 42 },
+  exit: { x: 8, y: 8, w: 48, h: 42 },
+  info: { x: 58, y: 8, w: 48, h: 42 },
   speedLow: { x: 8, y: 78, w: 80, h: 36 },
   speedMid: { x: 8, y: 118, w: 80, h: 36 },
   speedHigh: { x: 8, y: 158, w: 80, h: 36 },

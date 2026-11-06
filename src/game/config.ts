@@ -76,8 +76,20 @@ export const BONUS = {
   maxInterval: 7,
   /** Multiplier on the current egg speed. Colored eggs are the fastest objects. */
   speedFactor: 1.85,
-  points: 10,
+  points: 5,
   colors: ['red', 'blue', 'green'] as const,
+} as const;
+
+export const GOLD = {
+  /** One golden egg per this many eggs that are not grenades or colored. */
+  interval: 10,
+  points: 10,
+} as const;
+
+export const BLACK = {
+  /** One black egg per this many eggs that are not grenades or colored. */
+  interval: 12,
+  scale: 1.5,
 } as const;
 
 export const GRENADE = {

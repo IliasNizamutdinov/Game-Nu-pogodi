@@ -1,4 +1,4 @@
-import { ANIM, BONUS, GRENADE, INPUT, PENALTY, SCORE, SPAWN } from './config';
+import { ANIM, BLACK, BONUS, GOLD, GRENADE, INPUT, PENALTY, SCORE, SPAWN } from './config';
 import { LANES, catchPoint } from './geometry';
 import { createHare, stepHare, type HareState } from './hare';
 import { activeLanes, inactiveLane } from './lanes';
@@ -35,8 +35,12 @@ export interface Session {
   grenadeRng: () => number;
   /** Ordinary eggs remaining before the next colored egg. */
   eggsUntilBonus: number;
-  /** Points shown by the catch floater. */
-  lastCatchPoints: number;
+  /** Plain eggs remaining before the next golden egg. */
+  eggsUntilGold: number;
+  /** Plain eggs remaining before the next black egg. */
+  eggsUntilBlack: number;
+  /** Text shown by the catch floater, such as "+5" or "1/2". */
+  lastCatchLabel: string;
   events: GameEvent[];
 }
 
@@ -64,7 +68,9 @@ export function createSession(highScore = 0): Session {
     rng: createRng(0x4e5047),
     grenadeRng: createRng(0x6772656e),
     eggsUntilBonus: 6,
-    lastCatchPoints: 1,
+    eggsUntilGold: GOLD.interval,
+    eggsUntilBlack: BLACK.interval,
+    lastCatchLabel: '+1',
     events: [],
   };
 }
@@ -103,7 +109,9 @@ export function startGame(session: Session, mode: GameMode): void {
   session.rng = createRng(0x4e5047);
   session.grenadeRng = createRng(0x6772656e);
   session.eggsUntilBonus = nextBonusGap(session.grenadeRng);
-  session.lastCatchPoints = 1;
+  session.eggsUntilGold = GOLD.interval;
+  session.eggsUntilBlack = BLACK.interval;
+  session.lastCatchLabel = '+1';
   session.events = [];
   const interval = spawnIntervalFor(speedFor(0, session.difficulty));
   session.spawnTimer = interval - SPAWN.firstEggDelay;
@@ -185,6 +193,19 @@ export function trySpawn(session: Session): boolean {
         if (session.eggsUntilBonus <= 0) {
           bonus = nextBonusColor(session.grenadeRng);
           session.eggsUntilBonus = nextBonusGap(session.grenadeRng);
+        } else {
+          session.eggsUntilGold -= 1;
+          session.eggsUntilBlack -= 1;
+          const goldDue = session.eggsUntilGold <= 0;
+          const blackDue = session.eggsUntilBlack <= 0;
+          if (blackDue) {
+            bonus = 'black';
+            session.eggsUntilBlack = BLACK.interval;
+            if (goldDue) session.eggsUntilGold = 1;
+          } else if (goldDue) {
+            bonus = 'gold';
+            session.eggsUntilGold = GOLD.interval;
+          }
         }
       }
       return spawnEgg(session, lane, { kind, bonus }) !== null;
@@ -216,7 +237,7 @@ function applyCatch(session: Session, points: number): void {
   const prevCycle = Math.floor(session.internalCaught / (SCORE.maxDisplay + 1));
   session.internalCaught += points;
   session.displayScore = session.internalCaught % (SCORE.maxDisplay + 1);
-  session.lastCatchPoints = points;
+  session.lastCatchLabel = `+${points}`;
   const wrapped = Math.floor(session.internalCaught / (SCORE.maxDisplay + 1)) > prevCycle;
 
   if (wrapped) {
@@ -238,6 +259,17 @@ function applyCatch(session: Session, points: number): void {
     session.notice = { text: 'PENALTIES CLEARED', until: session.time + ANIM.notice };
   }
   session.penaltyHalves = 0;
+}
+
+function halveScore(session: Session): void {
+  const span = SCORE.maxDisplay + 1;
+  const cycle = Math.floor(session.internalCaught / span);
+  const shown = session.internalCaught % span;
+  const halved = Math.floor(shown / 2);
+  session.internalCaught = cycle * span + halved;
+  session.displayScore = halved;
+  session.lastCatchLabel = '1/2';
+  session.notice = { text: 'SCORE HALVED', until: session.time + ANIM.notice };
 }
 
 function applyMiss(session: Session): boolean {
@@ -283,7 +315,9 @@ function resolveEgg(session: Session, egg: Egg): void {
     egg.state = 'caught';
     egg.animTime = 0;
     egg.hareWasPresent = false;
-    applyCatch(session, egg.bonus ? BONUS.points : 1);
+    if (egg.bonus === 'black') halveScore(session);
+    else if (egg.bonus === 'gold') applyCatch(session, GOLD.points);
+    else applyCatch(session, egg.bonus ? BONUS.points : 1);
     session.catchPulse = ANIM.catchPulse;
     session.events.push({ type: 'catch' });
     return;
@@ -318,7 +352,8 @@ export function tick(session: Session, dtSeconds: number): void {
       egg.animTime += dt;
       continue;
     }
-    const bonusFactor = egg.bonus ? BONUS.speedFactor : 1;
+    const colored = egg.bonus === 'red' || egg.bonus === 'blue' || egg.bonus === 'green';
+    const bonusFactor = colored ? BONUS.speedFactor : 1;
     egg.progress += speed * bonusFactor * dt;
     if (egg.progress >= 1) {
       egg.progress = 1;
