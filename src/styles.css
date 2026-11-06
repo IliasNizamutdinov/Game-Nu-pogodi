@@ -1,0 +1,32 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #146b32;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+}
+
+#game {
+  display: block;
+  touch-action: none;
+  background: #146b32;
+}
+
+#safe-area-probe {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  visibility: hidden;
+  pointer-events: none;
+}

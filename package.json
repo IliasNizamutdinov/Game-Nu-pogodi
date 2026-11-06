@@ -1,0 +1,32 @@
+{
+  "name": "nu-pogodi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit && vite build",
+    "phone": "vite build --mode phone && node scripts/pack-phone.mjs",
+    "apk": "vite build --mode phone && npx cap sync android && node scripts/build-apk.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "verify:dist": "node scripts/verify-dist.mjs",
+    "icons": "node scripts/generate-icons.mjs",
+    "test:smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.6.0",
+    "puppeteer-core": "^24.23.0",
+    "typescript": "^5.9.2",
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.0.2",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/haptics": "^8.0.2"
+  }
+}

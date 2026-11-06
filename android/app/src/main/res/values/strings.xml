@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ну, погоди!</string>
+    <string name="title_activity_main">Ну, погоди!</string>
+    <string name="package_name">com.iliasnizamutdinov.wolfandeggs</string>
+    <string name="custom_url_scheme">com.iliasnizamutdinov.wolfandeggs</string>
+</resources>

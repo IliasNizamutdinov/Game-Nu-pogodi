@@ -1,0 +1,48 @@
+export type GameMode = 'A' | 'B';
+
+export type Difficulty = 'low' | 'medium' | 'high';
+
+export type FallingKind = 'egg' | 'grenade';
+
+export type BonusColor = 'red' | 'blue' | 'green' | 'gold' | 'black';
+
+/** Four chutes: upper/lower and left/right. */
+export type LaneId = 'ul' | 'ur' | 'll' | 'lr';
+
+export type EggState = 'moving' | 'caught' | 'missed' | 'exploded';
+
+export type SessionStatus = 'menu' | 'playing' | 'paused' | 'gameover';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Egg {
+  id: number;
+  lane: LaneId;
+  /** 0 at the hen, 1 at the catch point. The lane never changes. */
+  progress: number;
+  state: EggState;
+  animTime: number;
+  /** Snapshot taken when the egg is missed. Later hare frames do not rewrite it. */
+  hareWasPresent: boolean;
+  kind: FallingKind;
+  /** Colored, gold, or black egg. Null for plain eggs and grenades. */
+  bonus: BonusColor | null;
+}
+
+export type GameEvent =
+  | { type: 'catch' }
+  | { type: 'miss'; hare: boolean }
+  | { type: 'gameover' }
+  | { type: 'reset-penalty' }
+  | { type: 'wrap' }
+  | { type: 'explode'; fatal: boolean };
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
